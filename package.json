@@ -12,10 +12,12 @@
     "node": "24.x"
   },
   "scripts": {
-    "dev": "concurrently -k -n api,web -c cyan,green \"npm run dev -w @libra/server\" \"npm run dev -w @libra/client\"",
+    "predev": "npm run build -w @libra/shared",
+    "dev": "concurrently -k -n shared,api,web -c yellow,cyan,green \"npm run dev -w @libra/shared\" \"npm run dev -w @libra/server\" \"npm run dev -w @libra/client\"",
     "build": "npm run typecheck && npm run build -w @libra/client && npm run build -w @libra/server",
     "start": "npm run start -w @libra/server",
-    "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run build -w @libra/shared && tsc -p tsconfig.json && npm run typecheck --workspaces --if-present",
+    "pretest": "npm run build -w @libra/shared",
     "test": "vitest run"
   },
   "devDependencies": {

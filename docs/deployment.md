@@ -10,6 +10,7 @@ Connecting the Vercel/Supabase integration alone does not create Libra's tables 
 - A build starting directly with `@libra/client` suggests either **Root Directory = client** or a client-only Build Command. This project must deploy from the repository root so Vercel sees both `api/index.ts` and `vercel.json`. The expected build starts with `libra@0.1.0 build`, runs type checking, then builds both client and server.
 - `relation "schema_migrations" does not exist` means that statement could not see the migration table. The earlier setup depended on a shared transaction/search path. The updated SQL uses one atomic `DO` statement and explicitly names every table under `libra`, making it independent of the editor's selected schema. Run the entire updated file, not just its tag-seeding section.
 - TypeScript errors saying validated fields such as `name` or `releaseDate` are optional come from the function compiler losing strict mode. Vercel's Node builder applies defaults before resolving inherited compiler settings; when `module` is only inherited, that step can set `strict: false`. The root `tsconfig.json` explicitly sets `module`, `moduleResolution`, `strict`, and `strictNullChecks` to prevent it. Keep those settings directly in that file. The normal build also checks this root config. Push both `tsconfig.json` and `package.json`, then redeploy the new commit; database changes are not needed for this error.
+- `ERR_MODULE_NOT_FOUND` pointing to `@libra/shared/src/types/library.ts` is an API packaging error. The old shared package exported TypeScript source files, but Vercel shipped them as JavaScript. The shared package now exports compiled JavaScript from `shared/dist`, with separate type declarations. The root build compiles it before checking and building the apps. Push `package.json`, `shared/package.json`, and `shared/tsconfig.json` together, then deploy the new commit. Do not upload `dist` or change Supabase tables or credentials to fix this error.
 
 ## 1. Prepare Supabase
 
@@ -92,13 +93,13 @@ IGDB access tokens expire. Renew yours with Twitch when necessary, update `IGDB_
 
 ### Push the corrected files and deploy
 
-Vercel reads the GitHub commit, not unsaved or unpushed files on your computer. The previous log used commit `085e753`; the SQL correction made afterward needs a new commit.
+Vercel reads the GitHub commit, not unsaved or unpushed files on your computer. The deployment with the shared-module error used commit `a40df0a`; the packaging correction needs a new commit.
 
 1. Open a terminal in this repository's top-level `libra` folder and run the following commands, one at a time:
 
 ```sh
-git add database/postgres/001_library.sql server/src/db/postgres.test.ts docs/deployment.md vercel.json
-git commit -m "Fix Supabase setup and clarify deployment"
+git add package.json shared/package.json shared/tsconfig.json shared/package.test.ts vitest.config.ts docs/deployment.md
+git commit -m "Fix shared package imports in Vercel functions"
 git push
 ```
 
@@ -106,7 +107,7 @@ If you use GitHub Desktop, the equivalent is: open the **libra** repository, rev
 
 2. Back in Vercel, open **Deployments**. A push to the linked production branch normally creates a new deployment automatically. Select the newest deployment for **main** and verify its commit matches the new one.
 3. If you need to redeploy after changing settings, use **… → Redeploy** on that newest deployment. Choose **Production**, turn off **Use existing Build Cache** for this retry if that option appears, then click **Redeploy**. Redeploying an older row uses that older commit.
-4. Expand **Build Logs**. Expect the root `libra@0.1.0 build`, type checks, a client build, and a server build. The `@libra/client` line is normal when it appears after the root build.
+4. Expand **Build Logs**. Expect the root `libra@0.1.0 build`, a shared package build, type checks, a client build, and a server build. The `@libra/client` line is normal when it appears after the root build.
 5. Wait for status **Ready**. Then use **Visit** or the production domain shown on the project overview. If the deployment is **Error**, scroll to the very bottom of Build Logs: copy the final error and preceding lines, not just the install warning.
 
 ## 3. Move your current library
@@ -132,6 +133,7 @@ Supabase Free may pause projects with low activity over a 7-day period. Resume t
 
 - Open `/library` directly: sign-in should appear, then the library after signing in.
 - `/api/health` should return JSON with `status: "ok"`. This checks the API process, not the database.
+- `/api/auth` should return JSON with `required: true` and your current authentication state. A 500 here means the API could not initialize; check Vercel's runtime logs, even if the build was successful.
 - Create a tag or entry, refresh, then open the production URL on another device. The saved data should be there.
 - In Supabase's Table Editor, select the `libra` schema to inspect `entries`, `tags`, and `entry_tags`.
 - If the website loads but cannot connect, check Vercel function logs and required environment variables. Redeploy after changing them.
