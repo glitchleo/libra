@@ -3,5 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { "./search": "./src/types/search.ts", "./library": "./src/types/library.ts", "./manual-entry": "./src/types/manual-entry.ts" }
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "exports": {
+    "./search": {
+      "types": "./dist/types/search.d.ts",
+      "default": "./dist/types/search.js"
+    },
+    "./library": {
+      "types": "./dist/types/library.d.ts",
+      "default": "./dist/types/library.js"
+    },
+    "./manual-entry": {
+      "types": "./dist/types/manual-entry.d.ts",
+      "default": "./dist/types/manual-entry.js"
+    }
+  }
 }
