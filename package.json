@@ -1,0 +1,26 @@
+{
+  "name": "libra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["client", "server", "shared"],
+  "engines": { "node": ">=24.0.0" },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c cyan,green \"npm run dev -w @libra/server\" \"npm run dev -w @libra/client\"",
+    "build": "npm run typecheck && npm run build -w @libra/client && npm run build -w @libra/server",
+    "start": "npm run start -w @libra/server",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^22.18.0",
+    "@types/supertest": "^6.0.3",
+    "concurrently": "^9.2.0",
+    "jsdom": "^26.1.0",
+    "supertest": "^7.1.4",
+    "typescript": "~5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

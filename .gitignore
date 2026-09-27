@@ -1,0 +1,27 @@
+# Dependencies and package-manager output
+node_modules/
+.npm/
+*.tsbuildinfo
+
+# Generated builds, test coverage, and caches
+dist/
+build/
+coverage/
+.vite/
+.cache/
+
+# Local environment configuration and credentials
+.env
+.env.*
+!.env.example
+
+# Local database files, uploaded files, and private exports
+/database/data/
+/server/uploads/
+/backups/
+
+# Logs and operating-system files
+*.log
+.DS_Store
+Thumbs.db
+Desktop.ini

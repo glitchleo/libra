@@ -1,0 +1,52 @@
+:root {
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: #f4f4f5;
+  background: #18181b;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+  --background: #18181b;
+  --surface: #202023;
+  --surface-hover: #303034;
+  --surface-raised: #28282c;
+  --border: #38383e;
+  --border-strong: #62626c;
+  --text: #f4f4f5;
+  --muted: #b4b4be;
+  --subtle: #9898a3;
+  --accent: #f0f0f2;
+  --accent-hover: #ffffff;
+  --accent-soft: #ffffff0d;
+  --ink: #202023;
+  --danger: #f0a6a6;
+  --page-width: 1280px;
+  --page-gutter: 48px;
+}
+* { box-sizing: border-box; }
+html { scrollbar-gutter: stable; scroll-padding-top: 100px; }
+body { margin: 0; min-width: 280px; }
+html[data-reduce-motion=true] *, html[data-reduce-motion=true] *::before, html[data-reduce-motion=true] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+button, input, select, textarea { font: inherit; }
+button, a, input, select, textarea, summary { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+a { color: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+input, select { min-width: 0; }
+input::placeholder { color: var(--subtle); }
+button { transition: background .15s, border-color .15s, opacity .15s; }
+::selection { background: var(--accent); color: var(--ink); }
+@media (max-width: 800px) { :root { --page-gutter: 28px; } }
+@media (max-width: 480px) { :root { --page-gutter: 20px; } }
+@media (max-width: 560px) {
+  html { scroll-padding-top: 80px; }
+  /* 16px prevents automatic zoom when focusing fields on iOS. */
+  input:not([type=checkbox]), select, textarea { font-size: 16px !important; }
+  button, summary { touch-action: manipulation; }
+  main button:not([aria-haspopup=dialog]), main select { min-height: 44px; }
+  main { overflow-wrap: anywhere; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "@libra/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { "./search": "./src/types/search.ts", "./library": "./src/types/library.ts", "./manual-entry": "./src/types/manual-entry.ts" }
+}

@@ -1,0 +1,42 @@
+.page { width: 100%; max-width: var(--page-width); padding: 38px var(--page-gutter) 80px; margin: 0 auto; flex: 1; }
+.back { color: var(--muted); display: inline-flex; align-items: center; gap: 8px; font-size: 12px; text-decoration: none; }
+.back:hover { color: var(--accent); }
+.heading { margin: 38px 0 48px; }
+.eyebrow { color: var(--subtle); font-size: 10px; letter-spacing: 1.7px; font-weight: 550; }
+.heading h1 { font-size: clamp(40px, 5vw, 64px); letter-spacing: -2.5px; font-weight: 550; margin: 20px 0 16px; }
+.heading h1 > span { color: var(--subtle); }
+.heading p { color: var(--muted); font-size: 15px; line-height: 1.7; margin: 0; }
+.formBody { padding: 0; margin: 0; min-width: 0; border: 0; }
+.typeSection, .section { display: grid; grid-template-columns: 225px minmax(0, 1fr); gap: 54px; border: 0; border-top: 1px solid var(--border); padding: 34px 0; }
+.sectionHeading { align-self: start; position: sticky; top: 114px; }
+.sectionHeading h2 { font-size: 18px; font-weight: 550; margin: 0 0 10px; display: flex; align-items: center; gap: 9px; letter-spacing: -.3px; }
+.sectionHeading h2 svg { color: var(--subtle); }
+.sectionHeading p { font-size: 13px; line-height: 1.7; color: var(--muted); margin: 0; }
+.types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.types button { display: flex; align-items: center; justify-content: flex-start; gap: 12px; min-height: 56px; padding: 14px 16px; color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 7px; font-size: 13px; }
+.types button:hover { background: var(--surface-hover); color: var(--text); }
+.types button[aria-pressed=true] { color: var(--text); border-color: var(--text); background: var(--surface-hover); }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+.field, .wideField { display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text); min-width: 0; }
+.wideField { grid-column: 1 / -1; }
+.required { display: contents; color: var(--muted); }
+.field input, .wideField input, .field select, .wideField textarea { width: 100%; min-width: 0; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 14px; font: inherit; font-size: 14px; line-height: 1.5; }
+.wideField textarea { resize: vertical; min-height: 125px; }
+.field input::placeholder, .wideField input::placeholder, .wideField textarea::placeholder { color: var(--subtle); }
+.hint { color: var(--muted); font-size: 11px; line-height: 1.6; }
+.formFooter { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 28px 0 0; border-top: 1px solid var(--border); }
+.formFooter p { color: var(--muted); font-size: 12px; }
+.primary, .secondary { display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid transparent; border-radius: 8px; padding: 13px 18px; text-decoration: none; font-size: 13px; font-weight: 550; }
+.primary { color: var(--ink); background: var(--accent); }
+.primary:hover { background: var(--accent-hover); }
+.secondary { color: var(--text); background: var(--surface-hover); border-color: var(--border); }
+.error { border: 1px solid var(--danger); border-radius: 8px; padding: 18px; color: var(--danger); font-size: 13px; margin: 20px 0; }
+.success { text-align: center; border: 1px solid var(--border); border-radius: 12px; padding: 50px 28px; background: var(--surface); }
+.success > svg { color: var(--accent); }
+.success h2 { font-weight: 550; font-size: 24px; }
+.success p { color: var(--muted); font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
+.actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 1000px) { .typeSection, .section { grid-template-columns: 185px minmax(0, 1fr); gap: 34px; } .types button { padding: 12px; gap: 8px; font-size: 12px; } }
+@media (max-width: 800px) { .page { padding-top: 30px; padding-bottom: 56px; } .typeSection, .section { grid-template-columns: 1fr; gap: 24px; padding: 28px 0; } .sectionHeading { position: static; } }
+@media (max-width: 480px) { .heading { margin: 28px 0 34px; } .heading h1 { letter-spacing: -1.7px; } .heading p { font-size: 13px; } .types button { flex-direction: column; justify-content: center; padding: 12px 8px; gap: 9px; font-size: 12px; } .grid { grid-template-columns: 1fr; gap: 22px; } .formFooter { flex-direction: column; align-items: stretch; } .formFooter p { text-align: center; } .actions { flex-direction: column; } }
