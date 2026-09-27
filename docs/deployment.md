@@ -11,6 +11,7 @@ Connecting the Vercel/Supabase integration alone does not create Libra's tables 
 - `relation "schema_migrations" does not exist` means that statement could not see the migration table. The earlier setup depended on a shared transaction/search path. The updated SQL uses one atomic `DO` statement and explicitly names every table under `libra`, making it independent of the editor's selected schema. Run the entire updated file, not just its tag-seeding section.
 - TypeScript errors saying validated fields such as `name` or `releaseDate` are optional come from the function compiler losing strict mode. Vercel's Node builder applies defaults before resolving inherited compiler settings; when `module` is only inherited, that step can set `strict: false`. The root `tsconfig.json` explicitly sets `module`, `moduleResolution`, `strict`, and `strictNullChecks` to prevent it. Keep those settings directly in that file. The normal build also checks this root config. Push both `tsconfig.json` and `package.json`, then redeploy the new commit; database changes are not needed for this error.
 - `ERR_MODULE_NOT_FOUND` pointing to `@libra/shared/src/types/library.ts` is an API packaging error. The old shared package exported TypeScript source files, but Vercel shipped them as JavaScript. The shared package now exports compiled JavaScript from `shared/dist`, with separate type declarations. The root build compiles it before checking and building the apps. Push `package.json`, `shared/package.json`, and `shared/tsconfig.json` together, then deploy the new commit. Do not upload `dist` or change Supabase tables or credentials to fix this error.
+- `400` errors with `INVALID_SEARCH` and `INVALID_LIBRARY_QUERY`, while `/api/entries/index` works and manual saves return `201`, can come from the API rewrite. A named `/api/:path*` capture becomes an extra `path` query parameter, which strict filter validation rejects. The rewrite now uses the unnamed `/api/(.*)` capture so the original search and library filters reach the API unchanged. Deploy the corrected `vercel.json`. A successful manual save is already stored; check the library after redeploying before creating the same entry again.
 
 ## 1. Prepare Supabase
 
@@ -93,13 +94,13 @@ IGDB access tokens expire. Renew yours with Twitch when necessary, update `IGDB_
 
 ### Push the corrected files and deploy
 
-Vercel reads the GitHub commit, not unsaved or unpushed files on your computer. The deployment with the shared-module error used commit `a40df0a`; the packaging correction needs a new commit.
+Vercel reads the GitHub commit, not unsaved or unpushed files on your computer. Commit all files belonging to a fix together, and verify that the deployment uses that commit. The routing correction below needs a new commit after `e931b93`.
 
 1. Open a terminal in this repository's top-level `libra` folder and run the following commands, one at a time:
 
 ```sh
-git add package.json shared/package.json shared/tsconfig.json shared/package.test.ts vitest.config.ts docs/deployment.md
-git commit -m "Fix shared package imports in Vercel functions"
+git add vercel.json package.json package-lock.json server/src/vercel-routing.test.ts docs/deployment.md
+git commit -m "Fix Vercel API query routing"
 git push
 ```
 
