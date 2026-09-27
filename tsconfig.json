@@ -1,5 +1,12 @@
 {
   "extends": "./server/tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "strictNullChecks": true
+  },
   "include": ["api", "server/src", "shared/src"],
   "exclude": ["**/*.test.ts"]
 }

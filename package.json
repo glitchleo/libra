@@ -15,7 +15,7 @@
     "dev": "concurrently -k -n api,web -c cyan,green \"npm run dev -w @libra/server\" \"npm run dev -w @libra/client\"",
     "build": "npm run typecheck && npm run build -w @libra/client && npm run build -w @libra/server",
     "start": "npm run start -w @libra/server",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces --if-present",
     "test": "vitest run"
   },
   "devDependencies": {
