@@ -9,6 +9,7 @@ build/
 coverage/
 .vite/
 .cache/
+.vercel/
 
 # Local environment configuration and credentials
 .env

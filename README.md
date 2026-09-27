@@ -15,7 +15,7 @@ Search includes cover cards, ratings, year filters for TMDB, IGDB, and Open Libr
 filters for TMDB and Tenrai, and TMDB's result-language filter. Only filters shared by the active catalogs are shown.
 The provider selector is populated by the server so more adapters can be added.
 
-The Library stores your saved catalog entries in a local SQLite database. Open a
+The Library stores entries in local SQLite during development, or Supabase PostgreSQL when deployed. See [the Vercel + Supabase deployment guide](docs/deployment.md) for setup, private access, and moving your existing library. Open a
 search result and choose **Add to library**. Set its status to Planned, In progress,
 Completed, On hold, or Dropped. Search results indicate titles already saved.
 The Library screen supports title/author/tag search, type/status/tag filters, sorting,

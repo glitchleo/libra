@@ -1,0 +1,64 @@
+-- Run this entire file once in the Supabase SQL Editor. Safe to run again.
+BEGIN;
+SELECT pg_advisory_xact_lock(742019, 1);
+CREATE SCHEMA IF NOT EXISTS libra;
+REVOKE ALL ON SCHEMA libra FROM PUBLIC;
+SET LOCAL search_path TO libra, public;
+CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY);
+-- Imported catalog metadata and personal library status are stored separately.
+CREATE TABLE IF NOT EXISTS entries (
+  id TEXT PRIMARY KEY,
+  provider TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  media_type TEXT NOT NULL CHECK (media_type IN ('movie','tv','anime','book','manga','manhwa','game','audiobook','other')),
+  provider_name TEXT NOT NULL,
+  title TEXT NOT NULL,
+  original_title TEXT NOT NULL,
+  overview TEXT NOT NULL,
+  release_date TEXT,
+  poster_url TEXT,
+  catalog_rating DOUBLE PRECISION CHECK (catalog_rating BETWEEN 0 AND 10),
+  catalog_vote_count INTEGER NOT NULL CHECK (catalog_vote_count >= 0),
+  external_url TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('planned','in_progress','completed','on_hold','dropped')),
+  added_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT,
+  UNIQUE (provider, media_type, source_id)
+);
+
+CREATE INDEX IF NOT EXISTS entries_library_added ON entries (deleted_at, added_at DESC, id);
+CREATE INDEX IF NOT EXISTS entries_library_type_status ON entries (deleted_at, media_type, status);
+
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS details_json TEXT NOT NULL DEFAULT '{}' CHECK (jsonb_typeof(details_json::jsonb) = 'object');
+CREATE UNIQUE INDEX IF NOT EXISTS entries_manual_request ON entries (source_id) WHERE provider = 'manual';
+CREATE TABLE IF NOT EXISTS tags (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 40),
+  name_key TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS entry_tags (
+  entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+  tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (entry_id, tag_id)
+);
+CREATE INDEX IF NOT EXISTS entry_tags_by_tag ON entry_tags (tag_id, entry_id);
+
+
+DO $migration$ BEGIN
+IF NOT EXISTS (SELECT 1 FROM schema_migrations WHERE name = '001_library') THEN
+INSERT INTO tags (id, name, name_key) VALUES
+  ('77d86a44-77c5-4c25-a0b1-29031f580001', 'Favorites', 'favorites'),
+  ('77d86a44-77c5-4c25-a0b1-29031f580002', 'Revisit', 'revisit'),
+  ('77d86a44-77c5-4c25-a0b1-29031f580003', 'Recommended', 'recommended'),
+  ('77d86a44-77c5-4c25-a0b1-29031f580004', 'Hidden gems', 'hidden gems');
+
+INSERT INTO schema_migrations (name) VALUES ('001_library');
+END IF; END $migration$;
+REVOKE ALL ON ALL TABLES IN SCHEMA libra FROM PUBLIC;
+ALTER TABLE entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE entry_tags ENABLE ROW LEVEL SECURITY;
+COMMIT;
+

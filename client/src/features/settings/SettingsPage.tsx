@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { Download, Upload, SlidersHorizontal, Database, Accessibility, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { backupMaxBytes, libraryStatuses } from '@libra/shared/library';
+import { libraryStatuses } from '@libra/shared/library';
+import { useAccess } from '../auth/AuthGate';
 import type { ImportMode, ImportSummary, LibrarySort, LibraryStatus } from '@libra/shared/library';
 import { useLibrary } from '../library/LibraryContext';
 import { statusLabels } from '../library/library-status';
@@ -13,6 +14,8 @@ import styles from './SettingsPage.module.css';
 export function SettingsPage() {
   const { preferences, update, reset, storageError } = usePreferences();
   const library = useLibrary();
+  const access = useAccess();
+  const backupLimitMB = access.maxBackupBytes / 1024 / 1024;
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<ImportMode>('keep');
   const [preview, setPreview] = useState<{ backup: unknown; summary: ImportSummary } | null>(null);
@@ -53,13 +56,13 @@ export function SettingsPage() {
         })}><Download size={16} aria-hidden="true" />{busy === 'export' ? 'Preparing backup…' : 'Export JSON'}</button>
         {lastExport && Number.isFinite(Date.parse(lastExport)) && <p className={styles.note}>Last export requested: {new Date(lastExport).toLocaleString()}</p>}
         <div className={styles.import}>
-          <h3>Import a backup</h3><p className={styles.note}>Choose a Libra JSON backup (up to 25 MB and 10,000 entries). Review the changes before importing. Entries outside the file stay in your library.</p>
+          <h3>Import a backup</h3><p className={styles.note}>Choose a Libra JSON backup (up to {backupLimitMB} MB and 10,000 entries). Review the changes before importing. Entries outside the file stay in your library.</p>
           <label className={styles.file}>Backup file<input ref={fileInput} type="file" accept=".json,application/json" disabled={!!busy} onChange={(event) => { setFile(event.target.files?.[0] ?? null); setPreview(null); setError(''); setMessage(''); }} /></label>
           <label className={styles.conflicts}>When an entry already exists<select disabled={!!busy} value={mode} onChange={(event) => { setMode(event.target.value as ImportMode); setPreview(null); setMessage(''); }}><option value="keep">Keep my existing entry and tags</option><option value="update">Use the backup entry and its tags</option></select></label>
           <p className={styles.note}>Matching uses catalog IDs, or the original ID of a custom entry. Previously removed matches are restored. Tags with the same name are reused.</p>
           <button type="button" className={styles.button} disabled={!file || !!busy} onClick={() => void run('preview', async () => {
             setPreview(null);
-            if (!file || file.size > backupMaxBytes) throw new Error('Choose a JSON backup smaller than 25 MB.');
+            if (!file || file.size > access.maxBackupBytes) throw new Error(`Choose a JSON backup smaller than ${backupLimitMB} MB.`);
             let backup: unknown;
             try { backup = JSON.parse((await file.text()).replace(/^\uFEFF/, '')); } catch { throw new Error('This file is not valid JSON. Choose an exported Libra backup.'); }
             const result = await previewImport(backup, mode); setPreview({ backup, summary: result.summary });
@@ -89,5 +92,9 @@ export function SettingsPage() {
         <p className={styles.note}>Resets only the preferences on this page. Your library and tags stay as they are.</p>
       </div>
     </section>
+    {access.required && <section className={styles.section} aria-labelledby="session-settings">
+      <div className={styles.intro}><h2 id="session-settings">Your session</h2><p>One private library, on all your devices.</p></div>
+      <div className={styles.panel}><button className={styles.button} type="button" disabled={!!busy} onClick={() => void run('logout', access.logout)}>Sign out on this device</button></div>
+    </section>}
   </main>;
 }

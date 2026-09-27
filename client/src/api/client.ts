@@ -23,6 +23,7 @@ async function requestJson<T>(path: string, init: RequestInit): Promise<T> {
   const data = await response.json().catch(() => null) as T | ApiErrorResponse | null;
   if (!response.ok || data === null) {
     const error = data && typeof data === 'object' && 'error' in data ? (data as ApiErrorResponse).error : null;
+    if (error?.code === 'AUTH_REQUIRED') window.dispatchEvent(new Event('libra:auth-required'));
     throw new ApiError(error?.code ?? 'SERVER_ERROR', error?.message ?? 'The server could not complete your request. Please try again.');
   }
   return data as T;

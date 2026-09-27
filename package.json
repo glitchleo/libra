@@ -3,8 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "workspaces": ["client", "server", "shared"],
-  "engines": { "node": ">=24.0.0" },
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "concurrently -k -n api,web -c cyan,green \"npm run dev -w @libra/server\" \"npm run dev -w @libra/client\"",
     "build": "npm run typecheck && npm run build -w @libra/client && npm run build -w @libra/server",
@@ -13,6 +19,7 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.18.0",
