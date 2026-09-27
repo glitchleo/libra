@@ -22,6 +22,27 @@ beforeEach(async () => { await pg.exec('TRUNCATE libra.entries CASCADE;'); });
 afterAll(async () => { await pg.close(); });
 
 describe('PostgreSQL library integration', () => {
+  it('initializes in one statement with an empty search path and preserves unrelated public tables', async () => {
+    const fresh = new PGlite();
+    try {
+      await fresh.exec("CREATE TABLE public.schema_migrations (unrelated TEXT); INSERT INTO public.schema_migrations VALUES ('keep'); SET search_path TO ''; ");
+      await fresh.exec(schema);
+      expect((await fresh.query('SELECT name FROM libra.schema_migrations')).rows).toEqual([{ name: '001_library' }]);
+      expect((await fresh.query('SELECT unrelated FROM public.schema_migrations')).rows).toEqual([{ unrelated: 'keep' }]);
+      expect((await fresh.query('SELECT * FROM libra.tags')).rows).toHaveLength(4);
+      await fresh.exec("DELETE FROM libra.tags WHERE name_key = 'favorites'");
+      await fresh.exec(schema);
+      expect((await fresh.query('SELECT * FROM libra.tags')).rows).toHaveLength(3);
+    } finally { await fresh.close(); }
+  });
+  it('completes setup after a partial earlier attempt without replacing existing tags', async () => {
+    const fresh = new PGlite();
+    try {
+      await fresh.exec("CREATE SCHEMA libra; CREATE TABLE libra.tags (id TEXT PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL UNIQUE); INSERT INTO libra.tags VALUES ('77d86a44-77c5-4c25-a0b1-29031f580001', 'My favorites', 'my favorites');");
+      await fresh.exec(schema);
+      expect((await fresh.query('SELECT name FROM libra.tags ORDER BY id')).rows).toEqual([{ name: 'My favorites' }, { name: 'Revisit' }, { name: 'Recommended' }, { name: 'Hidden gems' }]);
+    } finally { await fresh.close(); }
+  });
   it('runs the Supabase schema and preserves removed defaults when rerun', async () => {
     expect(await repo.tags()).toHaveLength(4);
     const { tag } = await repo.createTag('Test migration');
