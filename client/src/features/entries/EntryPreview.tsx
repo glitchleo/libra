@@ -33,7 +33,7 @@ export function EntryPreview({ item, providerName, entryId, details, closeLabel 
   const titleId = useId();
   const [imageFailed, setImageFailed] = useState(false);
   const { icon: TypeIcon, singular } = mediaPresentation[item.mediaType];
-  const isBook = ['book', 'manga', 'manhwa', 'audiobook'].includes(item.mediaType);
+  const isBook = ['book', 'manga', 'manhwa', 'manhua', 'webtoon', 'audiobook'].includes(item.mediaType);
   const authorOverview = item.provider === 'openlibrary' && item.mediaType === 'book';
   const manual = item.provider === 'manual';
   const detailFields = [...mediaDetailFields[item.mediaType], ...commonDetailFields].filter((field) => details?.[field.key] !== undefined && details[field.key] !== '');

@@ -13,6 +13,7 @@ import { createTmdbProvider } from '../../providers/tmdb.js';
 import { createIgdbProvider } from '../../providers/igdb.js';
 import { createTenraiProvider } from '../../providers/tenrai.js';
 import { createOpenLibraryProvider } from '../../providers/openlibrary.js';
+import { createMangaUpdatesProvider } from '../../providers/mangaupdates.js';
 import { EntriesRepository } from './entries.repository.js';
 const movie: CatalogItem = {
     provider: 'tmdb', sourceId: '438631', mediaType: 'movie', title: 'Dune', originalTitle: 'Dune',
@@ -25,8 +26,12 @@ const game: CatalogItem = { ...movie, provider: 'igdb', sourceId: '119133', medi
     posterUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/cover.jpg', externalUrl: 'https://www.igdb.com/games/elden-ring' };
 const anime: CatalogItem = { ...movie, provider: 'tenrai', sourceId: '20', mediaType: 'anime', title: 'Naruto',
     posterUrl: 'https://cdn.myanimelist.net/images/anime/cover.jpg', externalUrl: 'https://myanimelist.net/anime/20' };
+const manhwa: CatalogItem = { ...movie, provider: 'mangaupdates', sourceId: '15180124327', mediaType: 'manhwa', title: 'Solo Leveling',
+    posterUrl: 'https://cdn.mangaupdates.com/image/i515366.jpg', externalUrl: 'https://www.mangaupdates.com/series/6z1uqw7/solo-leveling' };
+const manhua: CatalogItem = { ...manhwa, sourceId: '2', mediaType: 'manhua', title: 'A manhua', externalUrl: 'https://www.mangaupdates.com/series/2/a-manhua' };
+const webtoon: CatalogItem = { ...manhwa, sourceId: '3', mediaType: 'webtoon', title: 'A webtoon', externalUrl: 'https://www.mangaupdates.com/series/3/a-webtoon' };
 const migrations = resolve('database/migrations');
-const providers = createProviderRegistry([createTmdbProvider({}), createIgdbProvider({}), createTenraiProvider(), createOpenLibraryProvider()]);
+const providers = createProviderRegistry([createTmdbProvider({}), createIgdbProvider({}), createTenraiProvider(), createOpenLibraryProvider(), createMangaUpdatesProvider()]);
 let database: DatabaseSync;
 let repository: EntriesRepository;
 let api: ReturnType<typeof supertest>;
@@ -37,7 +42,7 @@ beforeEach(() => {
 });
 afterEach(() => database.close());
 describe('saved library API', () => {
-    it.each([movie, book, game, anime])('saves $provider metadata and returns it from the library and index', async (item) => {
+    it.each([movie, book, game, anime, manhwa, manhua, webtoon])('saves $provider $mediaType metadata and returns it from the library and index', async (item) => {
         const saved = await api.post('/api/entries').send({ item }).expect(201);
         expect(saved.body).toMatchObject({ created: true, entry: { item, status: 'planned', id: expect.any(String), addedAt: expect.any(String) } });
         const list = await api.get('/api/entries').expect(200);
@@ -139,7 +144,7 @@ describe('saved library API', () => {
             persistent.close();
             persistent = openLibraryDatabase(filename, migrations);
             expect((await new EntriesRepository(persistent).get(original.id))).toEqual(original);
-            expect(persistent.prepare('SELECT count(*) AS count FROM schema_migrations').get()!.count).toBe(3);
+            expect(persistent.prepare('SELECT count(*) AS count FROM schema_migrations').get()!.count).toBe(4);
         }
         finally {
             persistent.close();

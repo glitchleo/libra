@@ -1,9 +1,6 @@
-.page { width: 100%; max-width: var(--page-width); margin: auto; padding: 60px var(--page-gutter) 80px; flex: 1; }
-.heading { margin-bottom: 48px; }
-.eyebrow { color: var(--subtle); font-size: 10px; letter-spacing: 1.8px; }
-.heading h1 { font-size: clamp(40px, 5vw, 64px); font-weight: 550; letter-spacing: -2px; margin: 20px 0 16px; }
-.heading h1 span { color: var(--subtle); }
-.heading p { color: var(--muted); font-size: 15px; line-height: 1.8; max-width: 540px; }
+.page { width: 100%; max-width: var(--page-width); margin: auto; padding: 36px var(--page-gutter) 80px; flex: 1; }
+.heading { margin-bottom: 28px; }
+.heading h1 { font-size: 32px; font-weight: 550; letter-spacing: -1px; margin: 0; }
 .section { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 44px; padding: 32px 0; border-top: 1px solid var(--border); }
 .intro > svg { color: var(--muted); margin-bottom: 14px; }
 .intro h2 { font-size: 18px; font-weight: 550; margin: 0 0 10px; }

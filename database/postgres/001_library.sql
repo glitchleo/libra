@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS libra.entries (
   id TEXT PRIMARY KEY,
   provider TEXT NOT NULL,
   source_id TEXT NOT NULL,
-  media_type TEXT NOT NULL CHECK (media_type IN ('movie','tv','anime','book','manga','manhwa','game','audiobook','other')),
+  media_type TEXT NOT NULL CHECK (media_type IN ('movie','tv','anime','book','manga','manhwa','manhua','webtoon','game','audiobook','other')),
   provider_name TEXT NOT NULL,
   title TEXT NOT NULL,
   original_title TEXT NOT NULL,
@@ -28,6 +28,12 @@ CREATE TABLE IF NOT EXISTS libra.entries (
   deleted_at TEXT,
   UNIQUE (provider, media_type, source_id)
 );
+
+-- Upgrade the original constraint as well when rerunning setup on an existing library.
+ALTER TABLE libra.entries DROP CONSTRAINT IF EXISTS entries_media_type_check;
+ALTER TABLE libra.entries ADD CONSTRAINT entries_media_type_check
+  CHECK (media_type IN ('movie','tv','anime','book','manga','manhwa','manhua','webtoon','game','audiobook','other'));
+INSERT INTO libra.schema_migrations (name) VALUES ('002_comic_media_types') ON CONFLICT DO NOTHING;
 
 CREATE INDEX IF NOT EXISTS entries_library_added ON libra.entries (deleted_at, added_at DESC, id);
 CREATE INDEX IF NOT EXISTS entries_library_type_status ON libra.entries (deleted_at, media_type, status);

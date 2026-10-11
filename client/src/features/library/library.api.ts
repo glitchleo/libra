@@ -17,4 +17,4 @@ export const restoreEntry = (id: string) => sendJson<{ entry: LibraryEntry }>('/
 export const createTag = (name: string) => sendJson<{ tag: LibraryTag; created: boolean }>('/api/entries/tags', 'POST', { name });
 export const renameTag = (id: string, name: string) => sendJson<{ tag: LibraryTag }>('/api/entries/tags/' + encodeURIComponent(id), 'PATCH', { name });
 export const deleteTag = (id: string) => sendJson<{ removed: boolean }>('/api/entries/tags/' + encodeURIComponent(id), 'DELETE');
-export const updateEntryTags = (id: string, tagIds: string[]) => sendJson<{ entry: LibraryEntry }>('/api/entries/' + encodeURIComponent(id) + '/tags', 'PATCH', { tagIds });
+export const updateEntryTags = (id: string, tagIds: string[], options?: Pick<RequestInit, 'keepalive'>) => sendJson<{ entry: LibraryEntry }>('/api/entries/' + encodeURIComponent(id) + '/tags', 'PATCH', { tagIds }, options);

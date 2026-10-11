@@ -3,6 +3,8 @@
 Open a catalog result and choose **Add to library**. Choose Planned, In progress,
 Completed, On hold, or Dropped before saving, or change the status afterwards.
 The entry stays open on the current screen. Saved search cards show **In library**.
+The last status you choose for a new entry becomes the initial status of the next
+entry during this visit. Refreshing resets it to the default in Settings.
 
 The **Library** page lists saved entries with cover art and status. Search title,
 original title, overview/author text, or tag name; filter by type, status, and tags; sort by recently
@@ -20,8 +22,12 @@ Use **Manage tags** in Library to create, rename, or delete your own tags. Favor
 Revisit, Recommended, and Hidden gems are included as editable defaults. Default
 tags are seeded once, so renaming or deleting one survives restarts.
 
-Open a saved entry and use **Your tags** to assign or unassign tags. Changes save
-automatically, and **Create & assign** adds a new tag directly from the entry.
+Open a saved entry and use **Tags** to assign or unassign tags. Selections change
+immediately. Five seconds after the first change, all changes for that entry save
+together in one request. Further taps during that window do not extend it.
+Closing the entry or navigating to another page keeps the save queued. Edits made
+while a request is in flight form the next batch. A failed save keeps your selection
+and displays a retry control. **Create & assign** adds a new tag directly from the entry.
 An entry can have multiple tags, and any tag can be shared across entries and media
 types. Assigned tags also appear below the entry's card in Library.
 
@@ -106,9 +112,9 @@ Imported source/media combinations and catalog/image hosts are validated before
 storing. Manual entries accept optional HTTPS image and reference URLs without
 requiring a catalog host.
 
-The client updates shared saved-state only after successful writes. Failed writes
-remain retryable, duplicate clicks are disabled while saving, and stale index reads
-cannot overwrite newer mutations. Library index data refreshes on window focus.
+The client updates tags optimistically, with other saved-state updated after
+successful writes. Failed writes remain retryable, and stale index reads cannot
+overwrite newer mutations or pending tags. Library index data refreshes on window focus.
 Search remains usable if the library API is unavailable.
 
 ## Validation

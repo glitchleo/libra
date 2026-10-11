@@ -10,9 +10,9 @@ import { usePreferences } from '../settings/PreferencesContext';
 
 export function EntryLibraryControls({ item, entryId }: { item: CatalogItem; entryId?: string }) {
   const library = useLibrary();
-  const { preferences } = usePreferences();
+  const { addStatus, rememberAddStatus } = usePreferences();
   const saved = library.find(item);
-  const [status, setStatus] = useState<LibraryStatus>(preferences.defaultStatus);
+  const [status, setStatus] = useState<LibraryStatus>(addStatus);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -38,7 +38,7 @@ export function EntryLibraryControls({ item, entryId }: { item: CatalogItem; ent
       <select value={saved?.status ?? status} disabled={busy} onChange={(event) => {
         const next = event.target.value as LibraryStatus;
         if (saved) void run(() => library.update(saved.id, next), 'Status updated.');
-        else setStatus(next);
+        else { setStatus(next); rememberAddStatus(next); }
       }}>{libraryStatuses.map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select>
     </label>}
     {!saved && !manual && <button type="button" className={styles.libraryButton} disabled={busy} onClick={() => void run(() => library.save(item, status), 'Added to your library.')}>

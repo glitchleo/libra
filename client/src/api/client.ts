@@ -8,8 +8,8 @@ export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T>
   return requestJson<T>(path, { signal });
 }
 
-export function sendJson<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
-  return requestJson<T>(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+export function sendJson<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown, options?: Pick<RequestInit, 'keepalive'>): Promise<T> {
+  return requestJson<T>(path, { ...options, method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 }
 
 async function requestJson<T>(path: string, init: RequestInit): Promise<T> {

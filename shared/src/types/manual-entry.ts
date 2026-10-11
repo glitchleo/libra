@@ -19,6 +19,8 @@ export const mediaDetailFields: Record<MediaType, DetailField[]> = {
   book: [text('author', 'Author'), text('publisher', 'Publisher'), count('pages', 'Pages'), text('isbn', 'ISBN')],
   manga: [text('author', 'Author'), text('artist', 'Artist'), count('volumes', 'Volumes'), count('chapters', 'Chapters')],
   manhwa: [text('author', 'Author'), text('artist', 'Artist'), count('volumes', 'Volumes'), count('chapters', 'Chapters')],
+  manhua: [text('author', 'Author'), text('artist', 'Artist'), count('volumes', 'Volumes'), count('chapters', 'Chapters')],
+  webtoon: [text('author', 'Author'), text('artist', 'Artist'), count('volumes', 'Volumes'), count('chapters', 'Chapters')],
   game: [text('developer', 'Developer'), text('publisher', 'Publisher'), text('platforms', 'Platforms'), { key: 'playtimeHours', label: 'Estimated playtime (hours)', type: 'number', max: 100000, step: 0.5 }],
   audiobook: [text('author', 'Author'), text('narrator', 'Narrator'), count('durationMinutes', 'Duration (minutes)', 100000)],
   other: [text('creator', 'Creator'), text('format', 'Format')],

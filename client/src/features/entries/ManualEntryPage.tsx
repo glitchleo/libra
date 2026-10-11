@@ -20,11 +20,11 @@ const emptyForm = () => ({ requestId: crypto.randomUUID(), title: '', originalTi
 
 export function ManualEntryPage() {
   const library = useLibrary();
-  const { preferences } = usePreferences();
+  const { addStatus, rememberAddStatus } = usePreferences();
   const { state: routeState } = useLocation();
   const [form, setForm] = useState(() => ({ ...emptyForm(), title: typeof routeState?.manualTitle === 'string' ? routeState.manualTitle.slice(0, 2000) : '' }));
   const [mediaType, setMediaType] = useState<MediaType>(() => types.includes(routeState?.manualMediaType) ? routeState.manualMediaType : 'movie');
-  const [status, setStatus] = useState<LibraryStatus>(preferences.defaultStatus);
+  const [status, setStatus] = useState<LibraryStatus>(addStatus);
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [creatingTag, setCreatingTag] = useState(false);
   const [details, setDetails] = useState<Record<string, string>>({});
@@ -36,7 +36,7 @@ export function ManualEntryPage() {
   const errorRef = useRef<HTMLDivElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
   const { icon: MediaIcon, singular } = mediaPresentation[mediaType];
-  const dateLabel = ['book', 'manga', 'manhwa', 'audiobook'].includes(mediaType) ? 'Publication date' : ['tv', 'anime'].includes(mediaType) ? 'First aired' : 'Release date';
+  const dateLabel = ['book', 'manga', 'manhwa', 'manhua', 'webtoon', 'audiobook'].includes(mediaType) ? 'Publication date' : ['tv', 'anime'].includes(mediaType) ? 'First aired' : 'Release date';
 
   function update(key: Exclude<keyof typeof form, 'requestId'>, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -79,9 +79,7 @@ export function ManualEntryPage() {
   return <main id="main-content" className={styles.page}>
     <Link to="/library" className={styles.back}><ArrowLeft size={15} aria-hidden="true" />Back to library</Link>
     <header className={styles.heading}>
-      <div className={styles.eyebrow}>MAKE IT PART OF YOUR COLLECTION</div>
-      <h1>Add an entry<span>.</span></h1>
-      <p>Some favorites are harder to find. Give yours a place here.</p>
+      <h1>Add entry</h1>
     </header>
 
     {saved ? <div className={styles.success} ref={successRef} tabIndex={-1}>
@@ -91,20 +89,20 @@ export function ManualEntryPage() {
       <div className={styles.actions}>
         <Link to="/library" className={styles.primary}>View library<ArrowRight size={16} aria-hidden="true" /></Link>
         <button type="button" className={styles.secondary} onClick={() => setPreview(true)}>View entry</button>
-        <button type="button" className={styles.secondary} onClick={() => { setSaved(null); setForm(emptyForm()); setDetails({}); setTagIds([]); setStatus(preferences.defaultStatus); }}>Add another entry</button>
+        <button type="button" className={styles.secondary} onClick={() => { setSaved(null); setForm(emptyForm()); setDetails({}); setTagIds([]); setStatus(addStatus); }}>Add another entry</button>
       </div>
     </div> : <form onSubmit={(event) => void submit(event)}>
       <fieldset disabled={busy} className={styles.formBody}>
         <legend className={styles.srOnly}>New entry details</legend>
         <section className={styles.typeSection} aria-labelledby="media-heading">
-          <div className={styles.sectionHeading}><h2 id="media-heading">What are you adding?</h2><p>Choose a type to see the relevant details.</p></div>
+          <div className={styles.sectionHeading}><h2 id="media-heading">Media type</h2></div>
           <div className={styles.types} role="group" aria-label="Media type">
             {types.map((type) => { const { icon: Icon, singular: name } = mediaPresentation[type]; return <button key={type} type="button" aria-pressed={mediaType === type} onClick={() => setMediaType(type)}><Icon size={19} aria-hidden="true" />{type === 'other' ? 'Other' : name}</button>; })}
           </div>
         </section>
 
         <section className={styles.section} aria-labelledby="basics-heading">
-          <div className={styles.sectionHeading}><h2 id="basics-heading">The essentials</h2><p>Title is required. Everything else can be left blank.</p></div>
+          <div className={styles.sectionHeading}><h2 id="basics-heading">Details</h2></div>
           <div className={styles.grid}>
             <label className={styles.wideField} htmlFor="manual-title">Title <span className={styles.required}>(required)</span><input id="manual-title" required maxLength={2000} value={form.title} onChange={(event) => update('title', event.target.value)} placeholder="The title you want to keep" /></label>
             <label className={styles.wideField} htmlFor="manual-description">Description<textarea id="manual-description" rows={5} maxLength={50000} value={form.description} onChange={(event) => update('description', event.target.value)} placeholder="What is it about?" /></label>
@@ -114,25 +112,25 @@ export function ManualEntryPage() {
         </section>
 
         <section className={styles.section} aria-labelledby="details-heading">
-          <div className={styles.sectionHeading}><h2 id="details-heading"><MediaIcon size={18} aria-hidden="true" />{singular} details</h2><p>Add whatever you know.</p></div>
+          <div className={styles.sectionHeading}><h2 id="details-heading"><MediaIcon size={18} aria-hidden="true" />{singular} details</h2></div>
           <div className={styles.grid}>{mediaDetailFields[mediaType].map(detailInput)}{commonDetailFields.map(detailInput)}</div>
         </section>
 
         <section className={styles.section} aria-labelledby="finishing-heading">
-          <div className={styles.sectionHeading}><h2 id="finishing-heading">Make it yours</h2><p>Add a cover, a reference, and a place in your plans.</p></div>
+          <div className={styles.sectionHeading}><h2 id="finishing-heading">Library</h2></div>
           <div className={styles.grid}>
             <label className={styles.field} htmlFor="manual-cover">Cover image URL<input id="manual-cover" type="url" pattern="https://.*" placeholder="https://…" maxLength={2048} value={form.coverUrl} onChange={(event) => update('coverUrl', event.target.value)} /><span className={styles.hint}>Optional direct link to an image, starting with https://.</span></label>
             <label className={styles.field} htmlFor="manual-website">Website or reference URL<input id="manual-website" type="url" pattern="https://.*" placeholder="https://…" maxLength={2048} value={form.websiteUrl} onChange={(event) => update('websiteUrl', event.target.value)} /></label>
-            <label className={styles.field} htmlFor="manual-status">Library status<select id="manual-status" value={status} onChange={(event) => setStatus(event.target.value as LibraryStatus)}>{libraryStatuses.map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select></label>
+            <label className={styles.field} htmlFor="manual-status">Library status<select id="manual-status" value={status} onChange={(event) => { const next = event.target.value as LibraryStatus; setStatus(next); rememberAddStatus(next); }}>{libraryStatuses.map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select></label>
           </div>
         </section>
         <section className={styles.section} aria-labelledby="new-tags-heading">
-          <div className={styles.sectionHeading}><h2 id="new-tags-heading">Organize with tags</h2><p>Choose existing tags or make one of your own.</p></div>
+          <div className={styles.sectionHeading}><h2 id="new-tags-heading">Tags</h2></div>
           <DraftTags value={tagIds} onChange={setTagIds} onBusyChange={setCreatingTag} />
         </section>
       </fieldset>
       {error && <div ref={errorRef} tabIndex={-1} role="alert" className={styles.error}>{error}</div>}
-      <div className={styles.formFooter}><p>This entry will be saved to your library.</p><button type="submit" className={styles.primary} disabled={busy || creatingTag}>{busy ? <LoaderCircle size={17} aria-hidden="true" /> : <Plus size={17} aria-hidden="true" />}{busy ? 'Saving entry…' : 'Add to library'}</button></div>
+      <div className={styles.formFooter}><button type="submit" className={styles.primary} disabled={busy || creatingTag}>{busy ? <LoaderCircle size={17} aria-hidden="true" /> : <Plus size={17} aria-hidden="true" />}{busy ? 'Saving entry…' : 'Add to library'}</button></div>
     </form>}
     {preview && saved && <EntryPreview item={saved.item} providerName={saved.providerName} entryId={saved.id} details={saved.details} closeLabel="Back to add entry" onClose={() => setPreview(false)} />}
   </main>;

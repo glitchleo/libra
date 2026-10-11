@@ -1,4 +1,4 @@
-export type MediaType = 'movie' | 'tv' | 'anime' | 'book' | 'manga' | 'manhwa' | 'game' | 'audiobook' | 'other';
+export type MediaType = 'movie' | 'tv' | 'anime' | 'book' | 'manga' | 'manhwa' | 'manhua' | 'webtoon' | 'game' | 'audiobook' | 'other';
 
 export interface CatalogProviderInfo {
   id: string;

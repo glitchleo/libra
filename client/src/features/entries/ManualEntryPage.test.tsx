@@ -55,6 +55,7 @@ describe('manual entry page', () => {
   it.each([
     ['Movie', 'Director', 'Runtime (minutes)'], ['Series', 'Creator', 'Seasons'], ['Anime', 'Studio', 'Episodes'],
     ['Book', 'Author', 'Pages'], ['Manga', 'Artist', 'Chapters'], ['Manhwa', 'Artist', 'Volumes'],
+    ['Manhua', 'Artist', 'Chapters'], ['Webtoon', 'Artist', 'Chapters'],
     ['Game', 'Developer', 'Platforms'], ['Audiobook', 'Narrator', 'Duration (minutes)'], ['Other', 'Creator', 'Format'],
   ])('offers the relevant optional fields for %s', async (type, field, extra) => {
     const user = userEvent.setup(); renderApp();
@@ -110,6 +111,22 @@ describe('manual entry page', () => {
     await user.click(screen.getByRole('button', { name: 'Add to library' }));
     await screen.findByRole('heading', { name: 'Added to your library' });
     expect(vi.mocked(createManualEntry).mock.calls[1][0].requestId).not.toBe(firstId);
+  });
+
+  it('keeps the last manually selected add status for another entry and navigation, then resets on a new app session', async () => {
+    const user = userEvent.setup(); renderApp();
+    await user.selectOptions(screen.getByLabelText('Library status'), 'completed');
+    await user.type(screen.getByRole('textbox', { name: /Title.*required/i }), 'First title');
+    await user.click(screen.getByRole('button', { name: 'Add to library' }));
+    await screen.findByRole('heading', { name: 'Added to your library' });
+    await user.click(screen.getByRole('button', { name: 'Add another entry' }));
+    expect(screen.getByLabelText('Library status')).toHaveProperty('value', 'completed');
+    await user.click(screen.getByRole('link', { name: 'Settings' }));
+    await user.click(screen.getByRole('link', { name: 'Add entry' }));
+    expect(screen.getByLabelText('Library status')).toHaveProperty('value', 'completed');
+    expect(JSON.parse(localStorage.getItem('libra.preferences.v1')!).defaultStatus).toBe('planned');
+    cleanup(); renderApp();
+    expect(screen.getByLabelText('Library status')).toHaveProperty('value', 'planned');
   });
 
   it('retains fields and the request identity after failure and blocks duplicate submissions while saving', async () => {

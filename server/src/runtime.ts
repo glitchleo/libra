@@ -7,6 +7,7 @@ import { createTmdbProvider } from './providers/tmdb.js';
 import { createTenraiProvider } from './providers/tenrai.js';
 import { createIgdbProvider } from './providers/igdb.js';
 import { createOpenLibraryProvider } from './providers/openlibrary.js';
+import { createMangaUpdatesProvider } from './providers/mangaupdates.js';
 import { openLibraryDatabase } from './db/database.js';
 import { openPostgresDatabase } from './db/postgres.js';
 import { EntriesRepository } from './modules/entries/entries.repository.js';
@@ -18,6 +19,7 @@ export function createRuntime(hosted = false) {
   const providers = createProviderRegistry([
     createTmdbProvider({ readAccessToken: env.TMDB_READ_ACCESS_TOKEN, apiKey: env.TMDB_API_KEY }),
     createTenraiProvider({ serverKey: env.TENRAI_SERVER_KEY }),
+    createMangaUpdatesProvider(),
     createIgdbProvider({ clientId: env.IGDB_CLIENT_ID, accessToken: env.IGDB_ACCESS_TOKEN }),
     createOpenLibraryProvider({ contactEmail: env.OPENLIBRARY_CONTACT_EMAIL }),
   ]);

@@ -1,5 +1,9 @@
 # Deploy Libra to Vercel + Supabase
 
+Already deployed? Follow [the MangaUpdates update steps](mangaupdates-update.md)
+for the required Supabase media-type constraint upgrade and the next GitHub/Vercel
+deployment. No new MangaUpdates API key or environment variable is needed.
+
 Libra deploys as one Vercel project: Vite's website in `client/dist`, plus the Express API through `api/index.ts`. Supabase stores entries, media details, statuses, tags, and assignments in PostgreSQL. Local development still uses SQLite when `DATABASE_URL` is empty. This is one personal library protected by a private password, not a multi-user service.
 
 Connecting the Vercel/Supabase integration alone does not create Libra's tables or move your local library. Complete these steps once.
@@ -94,13 +98,13 @@ IGDB access tokens expire. Renew yours with Twitch when necessary, update `IGDB_
 
 ### Push the corrected files and deploy
 
-Vercel reads the GitHub commit, not unsaved or unpushed files on your computer. Commit all files belonging to a fix together, and verify that the deployment uses that commit. The routing correction below needs a new commit after `e931b93`.
+Vercel reads the GitHub commit, not unsaved or unpushed files on your computer. Commit all files belonging to the update together, and verify that the deployment uses that commit.
 
 1. Open a terminal in this repository's top-level `libra` folder and run the following commands, one at a time:
 
 ```sh
-git add vercel.json package.json package-lock.json server/src/vercel-routing.test.ts docs/deployment.md
-git commit -m "Fix Vercel API query routing"
+git add client server shared database docs README.md
+git commit -m "Add MangaUpdates and improve search and tags"
 git push
 ```
 

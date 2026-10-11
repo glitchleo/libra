@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -45,6 +45,7 @@ beforeAll(() => {
 });
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   saved = [];
   tags = [];
   vi.mocked(getProviders).mockResolvedValue({ providers });
@@ -71,7 +72,7 @@ beforeEach(() => {
     return { removed: true };
   });
 });
-afterEach(() => { cleanup(); vi.resetAllMocks(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.resetAllMocks(); });
 
 describe('library workflows', () => {
   it('creates custom tags, assigns multiple tags, combines filters and restores assignments on remount', async () => {
@@ -84,10 +85,16 @@ describe('library workflows', () => {
     expect(createTag).toHaveBeenCalledWith('Cozy evenings');
     await user.click(await screen.findByRole('button', { name: 'Dune — view details' }));
     const assignments = within(screen.getByRole('group', { name: 'Assign tags' }));
+    vi.useFakeTimers();
     for (const name of ['Favorites', 'Revisit', 'Cozy evenings']) {
-      await user.click(assignments.getByRole('button', { name }));
-      await waitFor(() => expect(assignments.getByRole('button', { name }).getAttribute('aria-pressed')).toBe('true'));
+      fireEvent.click(assignments.getByRole('button', { name }));
+      expect(assignments.getByRole('button', { name }).getAttribute('aria-pressed')).toBe('true');
     }
+    expect(updateEntryTags).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTimeAsync(5_000));
+    await act(async () => vi.advanceTimersByTimeAsync(180));
+    vi.useRealTimers();
+    expect(updateEntryTags).toHaveBeenCalledTimes(1);
     expect(saved[0].tags).toHaveLength(3);
     await user.click(screen.getByRole('button', { name: 'Back to library' }));
     await waitFor(() => expect(within(screen.getByLabelText('Tags for Dune')).getByText('Cozy evenings')).toBeTruthy());
@@ -103,17 +110,20 @@ describe('library workflows', () => {
     expect(within(screen.getByRole('group', { name: 'Assign tags' })).getByRole('button', { name: 'Favorites' }).getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('keeps assignments unchanged after a failed save, supports retry, and creates a tag inside entry details', async () => {
+  it('retains optimistic assignments after a failed save, supports retry, and creates a tag inside entry details', async () => {
     const user = userEvent.setup(); saved = [{ ...makeEntry(), tags: [favorites] }]; tags = [favorites, revisit];
     vi.mocked(updateEntryTags).mockRejectedValueOnce(new Error('Tags could not be saved.'));
     renderApp('/library');
     await user.click(await screen.findByRole('button', { name: 'Dune — view details' }));
     const assignments = within(screen.getByRole('group', { name: 'Assign tags' }));
-    await user.click(assignments.getByRole('button', { name: 'Favorites' }));
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'Tags could not be saved.');
-    expect(assignments.getByRole('button', { name: 'Favorites' }).getAttribute('aria-pressed')).toBe('true');
-    await user.click(assignments.getByRole('button', { name: 'Favorites' }));
-    await waitFor(() => expect(assignments.getByRole('button', { name: 'Favorites' }).getAttribute('aria-pressed')).toBe('false'));
+    vi.useFakeTimers();
+    fireEvent.click(assignments.getByRole('button', { name: 'Favorites' }));
+    await act(async () => vi.advanceTimersByTimeAsync(5_000));
+    vi.useRealTimers();
+    expect(await screen.findByRole('alert')).toHaveProperty('textContent', expect.stringContaining('Tags could not be saved.'));
+    expect(assignments.getByRole('button', { name: 'Favorites' }).getAttribute('aria-pressed')).toBe('false');
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Retry tags' }));
+    await waitFor(() => expect(saved[0].tags).toEqual([]));
     await user.type(screen.getByLabelText('New tag'), 'Weekend');
     await user.click(screen.getByRole('button', { name: 'Create & assign' }));
     await screen.findByText('Tag created and assigned.');
@@ -163,7 +173,7 @@ describe('library workflows', () => {
     const selector = await screen.findByLabelText('Data provider');
     await waitFor(() => expect((selector as HTMLSelectElement).value).toBe('tmdb'));
     await user.selectOptions(selector, provider);
-    await user.type(screen.getByLabelText('What are you looking for?'), 'Dune{Enter}');
+    await user.type(screen.getByLabelText('Search titles'), 'Dune{Enter}');
     await user.click(await screen.findByRole('button', { name: 'Dune — view details' }));
     await user.selectOptions(screen.getByLabelText('Library status'), 'in_progress');
     await user.click(screen.getByRole('button', { name: 'Add to library' }));
@@ -178,7 +188,7 @@ describe('library workflows', () => {
     expect(searchCatalog).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole('link', { name: 'Library' }));
     expect(await screen.findByRole('button', { name: 'Dune — view details' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: /Your library\s*\./ })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Library', level: 1 })).toBeTruthy();
   });
 
   it('loads saved entries on a new app mount and edits their status in place', async () => {

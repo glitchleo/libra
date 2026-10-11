@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { libraryStatuses } from '@libra/shared/library';
 import { commonDetailFields, mediaDetailFields } from '@libra/shared/manual-entry';
 
-const mediaType = z.enum(['movie', 'tv', 'anime', 'book', 'manga', 'manhwa', 'game', 'audiobook', 'other']);
+const mediaType = z.enum(['movie', 'tv', 'anime', 'book', 'manga', 'manhwa', 'manhua', 'webtoon', 'game', 'audiobook', 'other']);
 export const statusSchema = z.enum(libraryStatuses);
 const httpsUrl = z.url().max(2048).refine((value) => {
   if (!URL.canParse(value)) return false;

@@ -4,12 +4,17 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { App } from '../../app/App';
-import { getLibrary, getLibraryIndex } from '../library/library.api';
+import { getLibrary, getLibraryIndex, updateEntryTags } from '../library/library.api';
+import { LibraryProvider, useLibrary } from '../library/LibraryContext';
+import { PreferencesProvider } from './PreferencesContext';
+import { SettingsPage } from './SettingsPage';
+import { useAccess } from '../auth/AuthGate';
 import { downloadBackup, exportLibrary, importLibrary, previewImport } from './backup.api';
 import { backupMaxBytes } from '@libra/shared/library';
 import type { LibraryBackup, LibraryEntry } from '@libra/shared/library';
 
-vi.mock('../library/library.api', () => ({ getLibrary: vi.fn(), getLibraryIndex: vi.fn() }));
+vi.mock('../library/library.api', () => ({ getLibrary: vi.fn(), getLibraryIndex: vi.fn(), updateEntryTags: vi.fn() }));
+vi.mock('../auth/AuthGate', () => ({ useAccess: vi.fn() }));
 vi.mock('./backup.api', () => ({ downloadBackup: vi.fn(), exportLibrary: vi.fn(), importLibrary: vi.fn(), previewImport: vi.fn() }));
 const entry: LibraryEntry = { id: '77d86a44-77c5-4c25-a0b1-29031f580009', providerName: 'Manual entry', status: 'planned', tags: [], addedAt: '2026-09-27T12:00:00Z', updatedAt: '2026-09-27T12:00:00Z', item: { provider: 'manual', sourceId: '77d86a44-77c5-4c25-a0b1-29031f580008', mediaType: 'book', title: 'The Lantern Atlas', originalTitle: '', overview: 'A wonderful journey.', releaseDate: null, posterUrl: null, externalUrl: '', rating: null, voteCount: 0 } };
 const backup: LibraryBackup = { format: 'libra-library', version: 1, exportedAt: '2026-09-27T12:00:00Z', tags: [], entries: [entry] };
@@ -21,6 +26,8 @@ const file = (text = JSON.stringify(backup)) => {
 function renderApp(path = '/settings') { return render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>); }
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
+  vi.mocked(useAccess).mockReturnValue({ required: false, maxBackupBytes: backupMaxBytes, logout: vi.fn() });
   vi.mocked(getLibraryIndex).mockResolvedValue({ entries: [], tags: [] });
   vi.mocked(getLibrary).mockResolvedValue({ entries: [entry], page: 1, totalPages: 1, totalResults: 1, summary: { total: 1, byStatus: { planned: 1 } } });
   vi.mocked(exportLibrary).mockResolvedValue(backup);
@@ -59,7 +66,7 @@ describe('settings and library preferences', () => {
     expect((screen.getByLabelText('Library layout') as HTMLSelectElement).value).toBe('large');
     const user = userEvent.setup(); await user.selectOptions(screen.getByLabelText('Start page'), '/library');
     cleanup(); renderApp('/');
-    expect(await screen.findByRole('heading', { name: /Your library\s*\./ })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Library', level: 1 })).toBeTruthy();
   });
 
   it('exports the complete API payload and reports failed downloads without a false success', async () => {
@@ -71,6 +78,38 @@ describe('settings and library preferences', () => {
     await user.click(screen.getByRole('button', { name: 'Export JSON' }));
     await screen.findByText(/Backup download started/);
     expect(downloadBackup).toHaveBeenCalledWith(backup);
+  });
+
+  it('waits for queued tags before exporting or signing out, and keeps failed saves retryable', async () => {
+    const logout = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(useAccess).mockReturnValue({ required: true, maxBackupBytes: backupMaxBytes, logout });
+    const tag = { id: 'tag-a', name: 'Favorites' };
+    vi.mocked(getLibraryIndex).mockResolvedValue({ tags: [tag], entries: [{ id: entry.id, ...entry.item, status: entry.status, tagIds: [] }] });
+    function QueueTags() {
+      const library = useLibrary();
+      return <button disabled={!library.ready} onClick={() => library.setTags(entry.id, [tag.id])}>Queue tags</button>;
+    }
+    render(<MemoryRouter><PreferencesProvider><LibraryProvider><QueueTags /><SettingsPage /></LibraryProvider></PreferencesProvider></MemoryRouter>);
+    const user = userEvent.setup();
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Queue tags' }) as HTMLButtonElement).disabled).toBe(false));
+    let finishSave!: (value: { entry: LibraryEntry }) => void;
+    vi.mocked(updateEntryTags).mockImplementationOnce(() => new Promise(resolve => { finishSave = resolve; }));
+    await user.click(screen.getByRole('button', { name: 'Queue tags' }));
+    await user.click(screen.getByRole('button', { name: 'Export JSON' }));
+    expect(updateEntryTags).toHaveBeenCalledWith(entry.id, [tag.id], { keepalive: true });
+    expect(exportLibrary).not.toHaveBeenCalled();
+    finishSave({ entry: { ...entry, tags: [tag] } });
+    await screen.findByText(/Backup download started/);
+    expect(exportLibrary).toHaveBeenCalledTimes(1);
+
+    vi.mocked(updateEntryTags).mockRejectedValueOnce(new Error('Tag save failed.'));
+    await user.click(screen.getByRole('button', { name: 'Queue tags' }));
+    await user.click(screen.getByRole('button', { name: 'Sign out on this device' }));
+    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'Tag save failed.');
+    expect(logout).not.toHaveBeenCalled();
+    vi.mocked(updateEntryTags).mockResolvedValueOnce({ entry: { ...entry, tags: [tag] } });
+    await user.click(screen.getByRole('button', { name: 'Sign out on this device' }));
+    await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
   });
 
   it('previews before importing, invalidates the preview when mode changes, and retries an import failure', async () => {

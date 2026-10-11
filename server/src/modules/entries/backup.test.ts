@@ -9,8 +9,9 @@ import { openLibraryDatabase } from '../../db/database.js';
 import { EntriesRepository } from './entries.repository.js';
 import { createProviderRegistry } from '../../providers/catalog-provider.js';
 import { createTmdbProvider } from '../../providers/tmdb.js';
+import { createMangaUpdatesProvider } from '../../providers/mangaupdates.js';
 const migrations = resolve('database/migrations');
-const providers = createProviderRegistry([createTmdbProvider({})]);
+const providers = createProviderRegistry([createTmdbProvider({}), createMangaUpdatesProvider()]);
 let db: DatabaseSync;
 let repo: EntriesRepository;
 let api: ReturnType<typeof supertest>;
@@ -23,6 +24,31 @@ async function seed() {
     return { entry, tag };
 }
 describe('JSON library backups', () => {
+    it('round trips MangaUpdates manga, manhwa, manhua and webtoon entries and rejects mismatched links', async () => {
+        const tag = (await repo.tags())[0];
+        for (const [index, mediaType] of (['manga', 'manhwa', 'manhua', 'webtoon'] as const).entries()) {
+            const entry = (await repo.save({ provider: 'mangaupdates', sourceId: String(index + 1), mediaType, title: 'A ' + mediaType,
+                originalTitle: 'A comic', overview: 'A story.', releaseDate: '2024', posterUrl: 'https://cdn.mangaupdates.com/image/i1.jpg',
+                rating: 8.1, voteCount: 10, externalUrl: 'https://www.mangaupdates.com/series/' + (index + 1) }, 'MangaUpdates', 'completed')).entry;
+            await repo.setTags(entry.id, [tag.id]);
+        }
+        const backup = (await api.get('/api/entries/backup').expect(200)).body as LibraryBackup;
+        const otherDb = openLibraryDatabase(':memory:', migrations);
+        try {
+            const other = new EntriesRepository(otherDb);
+            const target = supertest(createApp(providers, undefined, other));
+            const preview = await target.post('/api/entries/backup/preview').send({ backup }).expect(200);
+            expect(preview.body.summary.added).toBe(4);
+            await target.post('/api/entries/backup/import').send({ backup }).expect(200);
+            expect((await other.exportBackup()).entries).toEqual(backup.entries);
+            for (const mediaType of ['manga', 'manhwa', 'manhua', 'webtoon'] as const)
+                expect((await target.get('/api/entries').query({ mediaType }).expect(200)).body.totalResults).toBe(1);
+            const invalid = structuredClone(backup);
+            invalid.entries[0].item.posterUrl = 'https://cdn.mangaupdates.com.evil.example/image/i1.jpg';
+            await target.post('/api/entries/backup/import').send({ backup: invalid, mode: 'update' }).expect(400);
+            expect((await other.exportBackup()).entries).toEqual(backup.entries);
+        } finally { otherDb.close(); }
+    });
     it('exports all active entries beyond one page with metadata and unused tags', async () => {
         const { entry, tag } = (await seed());
         for (let i = 0; i < 25; i++)

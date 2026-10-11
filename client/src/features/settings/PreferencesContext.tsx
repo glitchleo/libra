@@ -26,16 +26,18 @@ function readPreferences(): Preferences {
     };
   } catch { return { ...defaultPreferences }; }
 }
-const PreferencesContext = createContext<{ preferences: Preferences; update(value: Partial<Preferences>): void; reset(): void; storageError: string } | null>(null);
+const PreferencesContext = createContext<{ preferences: Preferences; update(value: Partial<Preferences>): void; reset(): void; storageError: string; addStatus: LibraryStatus; rememberAddStatus(value: LibraryStatus): void } | null>(null);
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState(readPreferences);
+  // This choice belongs to the current app visit; only display preferences are persisted.
+  const [lastAddStatus, setLastAddStatus] = useState<LibraryStatus | null>(null);
   const [storageError, setStorageError] = useState('');
   useEffect(() => {
     try { localStorage.setItem(key, JSON.stringify(preferences)); setStorageError(''); }
     catch { setStorageError('Browser storage is unavailable. Preferences will last for this visit only.'); }
     document.documentElement.dataset.reduceMotion = String(preferences.reducedMotion);
   }, [preferences]);
-  return <PreferencesContext.Provider value={{ preferences, update: (value) => setPreferences((current) => ({ ...current, ...value })), reset: () => setPreferences({ ...defaultPreferences }), storageError }}>{children}</PreferencesContext.Provider>;
+  return <PreferencesContext.Provider value={{ preferences, update: (value) => setPreferences((current) => ({ ...current, ...value })), reset: () => { setPreferences({ ...defaultPreferences }); setLastAddStatus(null); }, storageError, addStatus: lastAddStatus ?? preferences.defaultStatus, rememberAddStatus: setLastAddStatus }}>{children}</PreferencesContext.Provider>;
 }
 export function usePreferences() {
   const value = useContext(PreferencesContext);

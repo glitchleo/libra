@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { Plus, Compass, LibraryBig, Settings2, ArrowUpRight } from 'lucide-react';
-import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { SearchPage } from '../features/search/SearchPage';
 import { LibraryPage } from '../features/library/LibraryPage';
 import { LibraryProvider } from '../features/library/LibraryContext';
 import { ManualEntryPage } from '../features/entries/ManualEntryPage';
 import { PreferencesProvider, usePreferences } from '../features/settings/PreferencesContext';
 import { SettingsPage } from '../features/settings/SettingsPage';
+import { TagSaveNotice } from '../features/library/TagSaveNotice';
 import styles from './App.module.css';
 
 const links = [
@@ -22,11 +23,27 @@ export function App() {
 
 function AppShell() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { preferences } = usePreferences();
   useEffect(() => {
     document.title = 'Libra · ' + (links.find((link) => link.to === pathname)?.label ?? 'Search');
     if (window.scrollY) window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [pathname]);
+
+  useEffect(() => {
+    function searchShortcut(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.isComposing || event.repeat || event.altKey || document.querySelector('dialog[open]')) return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      const editing = Boolean(target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]'));
+      const command = (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'k';
+      const slash = event.key === '/' && !event.ctrlKey && !event.metaKey && !event.shiftKey && !editing;
+      if (!command && !slash) return;
+      event.preventDefault();
+      navigate('/search', { replace: pathname === '/search', state: { focusSearch: crypto.randomUUID() } });
+    }
+    window.addEventListener('keydown', searchShortcut);
+    return () => window.removeEventListener('keydown', searchShortcut);
+  }, [navigate, pathname]);
 
   return (
     <div className={styles.app}>
@@ -39,13 +56,14 @@ function AppShell() {
           </NavLink>
           <nav aria-label="Main navigation" className={styles.nav}>
             {links.map(({ to, label, icon: Icon }) => (
-              <NavLink key={to} to={to} title={label} className={({ isActive }) => [styles.navLink, to === '/entry' ? styles.addLink : '', to === '/settings' ? styles.settingsLink : styles.mainLink, isActive ? styles.active : ''].join(' ')}>
+              <NavLink key={to} to={to} title={to === '/search' ? 'Search (Ctrl/Cmd+K)' : label} aria-keyshortcuts={to === '/search' ? 'Control+k Meta+k /' : undefined} className={({ isActive }) => [styles.navLink, to === '/entry' ? styles.addLink : '', to === '/settings' ? styles.settingsLink : styles.mainLink, isActive ? styles.active : ''].join(' ')}>
                 <Icon size={17} aria-hidden="true" /><span className={to === '/settings' ? styles.srOnly : undefined}>{label}</span>
               </NavLink>
             ))}
           </nav>
         </div>
       </header>
+      <TagSaveNotice />
       <Routes>
         <Route path="/" element={<Navigate to={preferences.home} replace />} />
         <Route path="/search" element={<SearchPage />} />
@@ -55,7 +73,7 @@ function AppShell() {
         <Route path="*" element={<Navigate to="/search" replace />} />
       </Routes>
       <footer className={styles.footer}>
-        <div className={styles.footerBrand}><strong>libra</strong><span>A little space for everything you love.</span></div>
+        <div className={styles.footerBrand}><strong>libra</strong></div>
         <details className={styles.credits}>
           <summary>Data & credits</summary>
           <div className={styles.creditsContent}>
@@ -63,6 +81,7 @@ function AppShell() {
             <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer">The Movie Database <ArrowUpRight size={14} /></a>
             <p>This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
             <p>Anime and manga data from MyAnimeList via <a href="https://tenrai.org" target="_blank" rel="noreferrer">Tenrai <ArrowUpRight size={14} /></a>. Tenrai is not affiliated with MyAnimeList.</p>
+            <p>Comics data from <a href="https://www.mangaupdates.com" target="_blank" rel="noreferrer">MangaUpdates <ArrowUpRight size={14} /></a>.</p>
             <p>Game data provided by <a href="https://www.igdb.com" target="_blank" rel="noreferrer">IGDB <ArrowUpRight size={14} /></a>.</p>
             <p>Book data and covers from <a href="https://openlibrary.org" target="_blank" rel="noreferrer">Open Library <ArrowUpRight size={14} /></a>, an Internet Archive initiative.</p>
           </div>

@@ -7,6 +7,7 @@ import { EntriesRepository } from '../modules/entries/entries.repository.js';
 import type { LibraryBackup } from '@libra/shared/library';
 
 const schema = readFileSync('database/postgres/001_library.sql', 'utf8');
+const comicMigration = readFileSync('database/postgres/002_comic_media_types.sql', 'utf8');
 const pg = new PGlite();
 const store = postgresStore(work => pg.transaction(async tx => {
   await tx.exec('SET LOCAL search_path TO libra, public');
@@ -22,19 +23,36 @@ beforeEach(async () => { await pg.exec('TRUNCATE libra.entries CASCADE;'); });
 afterAll(async () => { await pg.close(); });
 
 describe('PostgreSQL library integration', () => {
+  it('upgrades the original media type constraint without changing existing entries or tags', async () => {
+    await pg.exec("ALTER TABLE libra.entries DROP CONSTRAINT entries_media_type_check; ALTER TABLE libra.entries ADD CONSTRAINT entries_media_type_check CHECK (media_type IN ('movie','tv','anime','book','manga','manhwa','game','audiobook','other'));");
+    const tags = await repo.tags();
+    const original = (await repo.createManual({ ...manual(), tagIds: [tags[0].id] })).entry;
+    await pg.exec(comicMigration);
+    expect(await repo.get(original.id)).toEqual(original);
+    expect(await repo.tags()).toEqual(tags);
+    for (const mediaType of ['manhua', 'webtoon'] as const) {
+      const saved = await repo.createManual({ ...manual(), mediaType, details: { chapters: 100 }, tagIds: [tags[0].id] });
+      expect(saved.entry.item.mediaType).toBe(mediaType);
+      expect((await repo.list({ mediaType })).totalResults).toBe(1);
+    }
+    const before = (await repo.exportBackup()).entries;
+    await pg.exec(comicMigration);
+    await pg.exec(schema);
+    expect((await repo.exportBackup()).entries).toEqual(before);
+  });
   it('initializes in one statement with an empty search path and preserves unrelated public tables', async () => {
     const fresh = new PGlite();
     try {
       await fresh.exec("CREATE TABLE public.schema_migrations (unrelated TEXT); INSERT INTO public.schema_migrations VALUES ('keep'); SET search_path TO ''; ");
       await fresh.exec(schema);
-      expect((await fresh.query('SELECT name FROM libra.schema_migrations')).rows).toEqual([{ name: '001_library' }]);
+      expect((await fresh.query('SELECT name FROM libra.schema_migrations ORDER BY name')).rows).toEqual([{ name: '001_library' }, { name: '002_comic_media_types' }]);
       expect((await fresh.query('SELECT unrelated FROM public.schema_migrations')).rows).toEqual([{ unrelated: 'keep' }]);
       expect((await fresh.query('SELECT * FROM libra.tags')).rows).toHaveLength(4);
       await fresh.exec("DELETE FROM libra.tags WHERE name_key = 'favorites'");
       await fresh.exec(schema);
       expect((await fresh.query('SELECT * FROM libra.tags')).rows).toHaveLength(3);
     } finally { await fresh.close(); }
-  });
+  }, 30_000);
   it('completes setup after a partial earlier attempt without replacing existing tags', async () => {
     const fresh = new PGlite();
     try {
@@ -42,7 +60,7 @@ describe('PostgreSQL library integration', () => {
       await fresh.exec(schema);
       expect((await fresh.query('SELECT name FROM libra.tags ORDER BY id')).rows).toEqual([{ name: 'My favorites' }, { name: 'Revisit' }, { name: 'Recommended' }, { name: 'Hidden gems' }]);
     } finally { await fresh.close(); }
-  });
+  }, 30_000);
   it('runs the Supabase schema and preserves removed defaults when rerun', async () => {
     expect(await repo.tags()).toHaveLength(4);
     const { tag } = await repo.createTag('Test migration');

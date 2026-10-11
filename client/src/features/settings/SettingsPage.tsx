@@ -31,7 +31,7 @@ export function SettingsPage() {
     finally { setBusy(''); }
   }
   return <main id="main-content" className={styles.page}>
-    <header className={styles.heading}><div className={styles.eyebrow}>MAKE YOURSELF AT HOME</div><h1>Settings<span>.</span></h1><p>Your collection, your way. Small preferences and a safe place for your backups.</p></header>
+    <header className={styles.heading}><h1>Settings</h1></header>
     <section className={styles.section} aria-labelledby="display-settings">
       <div className={styles.intro}><SlidersHorizontal size={22} aria-hidden="true" /><h2 id="display-settings">Library & display</h2><p>Saved automatically in this browser.</p></div>
       <div className={styles.panel}>
@@ -46,10 +46,11 @@ export function SettingsPage() {
       </div>
     </section>
     <section className={styles.section} aria-labelledby="backup-settings">
-      <div className={styles.intro}><Database size={22} aria-hidden="true" /><h2 id="backup-settings">Library backups</h2><p>Take your collection with you.</p></div>
+      <div className={styles.intro}><Database size={22} aria-hidden="true" /><h2 id="backup-settings">Library backups</h2></div>
       <div className={styles.panel}>
         <h3>Export your library</h3><p className={styles.note}>Download all saved entries and tags, including descriptions, media details, statuses, and dates. Covers are saved as image links. Removed entries and browser preferences are excluded.</p>
         <button className={styles.primary} type="button" disabled={!!busy} onClick={() => void run('export', async () => {
+          await library.flushTags();
           const backup = await exportLibrary(); downloadBackup(backup); setLastExport(backup.exportedAt);
           try { localStorage.setItem('libra.lastExport', backup.exportedAt); } catch { /* Export still works without browser storage. */ }
           setMessage('Backup download started. Keep the JSON file somewhere safe.');
@@ -84,17 +85,17 @@ export function SettingsPage() {
       </div>
     </section>
     <section className={styles.section} aria-labelledby="accessibility-settings">
-      <div className={styles.intro}><Accessibility size={22} aria-hidden="true" /><h2 id="accessibility-settings">Comfort & controls</h2><p>A calmer experience when you need it.</p></div>
+      <div className={styles.intro}><Accessibility size={22} aria-hidden="true" /><h2 id="accessibility-settings">Comfort & controls</h2></div>
       <div className={styles.panel}>
         <label className={styles.toggle}><span>Reduce animations</span><input type="checkbox" checked={preferences.reducedMotion} onChange={(event) => update({ reducedMotion: event.target.checked })} /></label>
-        <p className={styles.note}>Your device’s reduced-motion preference is also respected. Entry details support Escape to close and keyboard navigation.</p>
+        <p className={styles.note}>Ctrl/Cmd+K opens search. Press / outside a text field to search, or Escape to close entry details.</p>
         <button className={styles.button} type="button" onClick={reset}><RotateCcw size={15} aria-hidden="true" />Reset display preferences</button>
         <p className={styles.note}>Resets only the preferences on this page. Your library and tags stay as they are.</p>
       </div>
     </section>
     {access.required && <section className={styles.section} aria-labelledby="session-settings">
-      <div className={styles.intro}><h2 id="session-settings">Your session</h2><p>One private library, on all your devices.</p></div>
-      <div className={styles.panel}><button className={styles.button} type="button" disabled={!!busy} onClick={() => void run('logout', access.logout)}>Sign out on this device</button></div>
+      <div className={styles.intro}><h2 id="session-settings">Session</h2></div>
+      <div className={styles.panel}><button className={styles.button} type="button" disabled={!!busy} onClick={() => void run('logout', async () => { await library.flushTags(); await access.logout(); })}>Sign out on this device</button></div>
     </section>}
   </main>;
 }

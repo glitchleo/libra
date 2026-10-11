@@ -12,7 +12,9 @@ Preferences save automatically in this browser under `libra.preferences.v1`:
   to keep the layout readable; larger covers and list view respect the description switch.
 - Default sort: recently added, title A–Z, or catalog rating. Sorting in Library
   also updates this preference.
-- Default new-entry status: used for manual entry forms and new catalog saves.
+- Default new-entry status: the initial status after a page refresh. A manually
+  chosen status in an add form is reused for new catalog/manual entries during
+  that visit without changing this saved preference.
 - Start page: Search or Library, used for `/` and the Libra wordmark link.
 - Library description, catalog rating, and tag-badge visibility.
 - Reduced animations, in addition to the operating system's reduced-motion setting.
@@ -29,7 +31,8 @@ entry, across all pages and regardless of filters, plus all tags (including unus
 ones). Titles, descriptions, type-specific details, catalog identities and links,
 statuses, dates, and tag relationships are preserved. Images remain external URLs;
 the image files themselves are not embedded. Removed entries, browser preferences,
-and API credentials are excluded. The export is a consistent database snapshot.
+and API credentials are excluded. Export waits for any queued tag assignments
+before taking the database snapshot; a failed tag save prevents an incomplete export.
 
 The format is `{ format: 'libra-library', version: 1, exportedAt, tags, entries }`.
 `entries` use `LibraryEntry` from the shared library types. The format supports up

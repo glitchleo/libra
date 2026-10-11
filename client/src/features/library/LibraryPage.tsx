@@ -16,7 +16,7 @@ import searchStyles from '../search/SearchPage.module.css';
 import tagStyles from './Tags.module.css';
 import { TagManager } from './TagManager';
 
-const mediaTypes: MediaType[] = ['movie', 'tv', 'anime', 'game', 'book', 'manga', 'manhwa', 'audiobook', 'other'];
+const mediaTypes = Object.keys(mediaPresentation) as MediaType[];
 
 export function LibraryPage() {
   const { revision, tags, ready, error: libraryError, refresh } = useLibrary();
@@ -59,8 +59,8 @@ export function LibraryPage() {
 
   return <main id="main-content" className={styles.page}>
     <header className={styles.heading}>
-      <div><div className={styles.eyebrow}><span />YOUR STORIES, TOGETHER</div><h1>Your library<span>.</span></h1><p>A place for what you love—and what comes next.</p></div>
-      <div className={styles.headingActions}><Link to="/search" className={styles.secondaryLink}><Search size={16} aria-hidden="true" />Find titles to add</Link><Link to="/entry" className={styles.primaryLink}><Plus size={17} aria-hidden="true" />Add entry</Link></div>
+      <h1>Library</h1>
+      <div className={styles.headingActions}><Link to="/search" className={styles.secondaryLink}><Search size={16} aria-hidden="true" />Search</Link><Link to="/entry" className={styles.primaryLink}><Plus size={17} aria-hidden="true" />Add entry</Link></div>
     </header>
 
     <div className={styles.stats} aria-label="Library summary">
@@ -71,7 +71,7 @@ export function LibraryPage() {
 
     <section className={styles.collection} aria-label="Saved entries">
       <div className={styles.toolbar}>
-        <label className={styles.search}><Search size={18} aria-hidden="true" /><input aria-label="Search your library" type="search" placeholder="Search titles, authors, or tags…" value={query} maxLength={200} onChange={(event) => { setQuery(event.target.value); setPage(1); }} /></label>
+        <label className={styles.search}><Search size={18} aria-hidden="true" /><input aria-label="Search your library" type="search" placeholder="Search titles, authors, or tags…" value={query} maxLength={200} onFocus={(event) => event.currentTarget.select()} onChange={(event) => { setQuery(event.target.value); setPage(1); }} /></label>
         <button type="button" className={styles.mobileFilters} aria-expanded={filtersOpen} aria-controls="library-filters" onClick={() => setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={16} aria-hidden="true" />Filters{Boolean(mediaType || status || tagIds.length) && ' · Active'}</button>
       </div>
       <div id="library-filters" className={`${styles.filtersPanel} ${filtersOpen ? styles.filtersOpen : ''}`}>

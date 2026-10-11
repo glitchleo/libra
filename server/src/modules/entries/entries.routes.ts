@@ -13,6 +13,7 @@ const hosts: Record<string, {
     tenrai: { source: 'myanimelist.net', images: 'cdn.myanimelist.net' },
     igdb: { source: 'www.igdb.com', images: 'images.igdb.com' },
     openlibrary: { source: 'openlibrary.org', images: 'covers.openlibrary.org' },
+    mangaupdates: { source: 'www.mangaupdates.com', images: 'cdn.mangaupdates.com' },
 };
 export function createEntriesRouter(repository: EntriesRepository, providers: ProviderRegistry, maxBackupBytes = backupMaxBytes) {
     const router = Router();

@@ -34,10 +34,10 @@ const result: CatalogSearchResponse = {
   }],
 };
 
-function renderApp() { return render(<MemoryRouter initialEntries={['/search']}><App /></MemoryRouter>); }
+function renderApp(path = '/search') { return render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>); }
 async function ready() { await waitFor(() => expect((screen.getByLabelText('Data provider') as HTMLSelectElement).value).toBe('tmdb')); }
 async function submitDune(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText('What are you looking for?'), 'Dune');
+  await user.type(screen.getByLabelText('Search titles'), 'Dune');
   await user.click(screen.getByRole('button', { name: 'Search' }));
 }
 
@@ -65,6 +65,12 @@ const openlibrary: CatalogProviderInfo = {
   id: 'openlibrary', name: 'Open Library', description: 'Books from the Internet Archive’s open catalog',
   website: 'https://openlibrary.org', configured: true, requiresCredentials: false,
   mediaTypes: ['book'], filters: { year: true, language: false, includeAdult: false },
+};
+
+const mangaupdates: CatalogProviderInfo = {
+  id: 'mangaupdates', name: 'MangaUpdates', description: 'Manga, manhwa, manhua and webtoons',
+  website: 'https://www.mangaupdates.com', configured: true, requiresCredentials: false,
+  mediaTypes: ['manhwa', 'manhua', 'webtoon', 'manga'], filters: { year: true, language: false, includeAdult: true },
 };
 
 function catalogResult(request: Parameters<typeof searchCatalog>[0]): CatalogSearchResponse {
@@ -203,7 +209,7 @@ describe('Tenrai and combined search', () => {
     expect(screen.getByText('No key needed')).toBeTruthy();
     expect(screen.queryByLabelText('Release year')).toBeNull();
     expect(screen.queryByLabelText('Result language')).toBeNull();
-    await user.type(screen.getByLabelText('What are you looking for?'), 'Naruto{Enter}');
+    await user.type(screen.getByLabelText('Search titles'), 'Naruto{Enter}');
     expect(await screen.findByRole('heading', { name: 'tenrai anime title' })).toBeTruthy();
     expect(vi.mocked(searchCatalog).mock.calls[0][0]).toEqual({ provider: 'tenrai', mediaType: 'anime', query: 'Naruto', page: 1, includeAdult: false });
     await user.click(screen.getByRole('button', { name: 'Manga' }));
@@ -272,8 +278,8 @@ describe('Tenrai and combined search', () => {
     await screen.findByRole('heading', { name: 'tenrai anime title' });
     await user.click(within(screen.getByRole('navigation', { name: 'Tenrai · Anime pages' })).getByRole('button', { name: 'Next' }));
     await waitFor(() => expect(searchCatalog).toHaveBeenCalledTimes(5));
-    await user.clear(screen.getByLabelText('What are you looking for?'));
-    await user.type(screen.getByLabelText('What are you looking for?'), 'Naruto{Enter}');
+    await user.clear(screen.getByLabelText('Search titles'));
+    await user.type(screen.getByLabelText('Search titles'), 'Naruto{Enter}');
     await waitFor(() => expect(searchCatalog).toHaveBeenCalledTimes(9));
     for (const [request] of vi.mocked(searchCatalog).mock.calls.slice(5)) {
       expect(request.query).toBe('Naruto');
@@ -293,10 +299,101 @@ describe('Tenrai and combined search', () => {
 });
 
 describe('external search page', () => {
+  it('selects all query text on focus and phone taps, while allowing desktop clicks to place the caret', async () => {
+    const user = userEvent.setup(); renderApp(); await ready();
+    const query = screen.getByLabelText('Search titles') as HTMLInputElement;
+    await user.type(query, 'Interstellar');
+    await user.click(screen.getByLabelText('Release year'));
+    fireEvent(query, Object.assign(new Event('pointerdown', { bubbles: true }), { pointerType: 'touch' }));
+    act(() => query.focus());
+    expect(query.selectionStart).toBe(0);
+    expect(query.selectionEnd).toBe(query.value.length);
+    // A browser's pointer default can collapse the focus selection before click.
+    query.setSelectionRange(3, 3);
+    fireEvent.click(query);
+    expect(query.selectionStart).toBe(0);
+    expect(query.selectionEnd).toBe(query.value.length);
+    await user.keyboard('Arrival');
+    expect(query.value).toBe('Arrival');
+    fireEvent(query, Object.assign(new Event('pointerdown', { bubbles: true }), { pointerType: 'touch' }));
+    query.setSelectionRange(2, 2);
+    fireEvent.click(query);
+    expect(query.selectionStart).toBe(0);
+    expect(query.selectionEnd).toBe(7);
+    fireEvent.pointerDown(query, { pointerType: 'mouse' });
+    query.setSelectionRange(2, 2);
+    fireEvent.click(query);
+    expect(query.selectionStart).toBe(2);
+    expect(query.selectionEnd).toBe(2);
+  });
+
+  it.each([{ ctrlKey: true }, { metaKey: true }])('opens and focuses search from another page with the command shortcut %j', async (modifier) => {
+    renderApp('/entry');
+    fireEvent.keyDown(window, { key: 'k', ...modifier });
+    await ready();
+    expect(document.activeElement).toBe(screen.getByLabelText('Search titles'));
+    expect(searchCatalog).not.toHaveBeenCalled();
+  });
+
+  it('focuses and selects an existing query with Ctrl+K and / without submitting', async () => {
+    const user = userEvent.setup(); renderApp(); await ready();
+    const query = screen.getByLabelText('Search titles') as HTMLInputElement;
+    await user.type(query, 'Dune');
+    await user.click(screen.getByLabelText('Release year'));
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    expect(document.activeElement).toBe(query);
+    expect(query.selectionStart).toBe(0);
+    expect(query.selectionEnd).toBe(4);
+    await user.click(screen.getByRole('heading', { name: 'Search', level: 1 }));
+    fireEvent.keyDown(window, { key: '/' });
+    expect(document.activeElement).toBe(query);
+    expect(query.selectionStart).toBe(0);
+    expect(query.selectionEnd).toBe(4);
+    expect(searchCatalog).not.toHaveBeenCalled();
+  });
+
+  it('does not hijack slash while editing or command shortcuts while an entry dialog is open', async () => {
+    const user = userEvent.setup(); renderApp('/entry');
+    const description = screen.getByLabelText('Description');
+    await user.type(description, 'A/B');
+    expect(description).toHaveProperty('value', 'A/B');
+    expect(screen.queryByLabelText('Search titles')).toBeNull();
+    await user.click(screen.getByRole('link', { name: 'Search' }));
+    await ready(); await submitDune(user);
+    await user.click(await screen.findByRole('button', { name: 'Dune — view details' }));
+    const dialog = screen.getByRole('dialog');
+    const focused = document.activeElement;
+    fireEvent.keyDown(focused!, { key: 'k', ctrlKey: true });
+    expect(screen.getByRole('dialog')).toBe(dialog);
+    expect(document.activeElement).toBe(focused);
+  });
+
+  it('offers MangaUpdates comic types and uses only its supported search filters', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getProviders).mockResolvedValue({ providers: [tmdb, mangaupdates] });
+    vi.mocked(searchCatalog).mockImplementation(async (request) => catalogResult(request));
+    renderApp(); await ready();
+    await user.selectOptions(screen.getByLabelText('Data provider'), 'mangaupdates');
+    expect(screen.getByRole('button', { name: 'Solo Leveling' })).toBeTruthy();
+    expect(screen.queryByLabelText('Result language')).toBeNull();
+    await user.type(screen.getByLabelText('First published year'), '2018');
+    await user.click(screen.getByRole('button', { name: 'Solo Leveling' }));
+    await screen.findByRole('heading', { name: 'mangaupdates manhwa title' });
+    expect(vi.mocked(searchCatalog).mock.calls.at(-1)?.[0]).toEqual({ provider: 'mangaupdates', query: 'Solo Leveling', mediaType: 'manhwa', page: 1, year: 2018, includeAdult: false });
+    for (const [label, mediaType] of [['Manhua', 'manhua'], ['Webtoons', 'webtoon']] as const) {
+      await user.click(screen.getByRole('button', { name: label }));
+      const title = 'mangaupdates ' + mediaType + ' title';
+      await user.click(await screen.findByRole('button', { name: title + ' — view details' }));
+      expect(within(screen.getByRole('dialog')).getByText('First published')).toBeTruthy();
+      await user.click(screen.getByRole('button', { name: 'Back to results' }));
+      expect(vi.mocked(searchCatalog).mock.calls.at(-1)?.[0].mediaType).toBe(mediaType);
+    }
+  });
+
   it('searches on Enter, renders real response fields, and paginates', async () => {
     const user = userEvent.setup();
     renderApp(); await ready();
-    await user.type(screen.getByLabelText('What are you looking for?'), 'Dune{Enter}');
+    await user.type(screen.getByLabelText('Search titles'), 'Dune{Enter}');
     expect(await screen.findByRole('heading', { name: 'Dune' })).toBeTruthy();
     expect(screen.getByText('2021')).toBeTruthy();
     expect(screen.getByText('7.8')).toBeTruthy();
@@ -395,7 +492,7 @@ describe('external search page', () => {
     expect(screen.getByRole('heading', { name: 'Library backups' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Export JSON' })).toBeTruthy();
     await user.click(screen.getByRole('link', { name: 'Search' }));
-    expect(await screen.findByRole('heading', { name: /^Find your next/ })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Search', level: 1 })).toBeTruthy();
   });
 
   it('renders a fallback when a poster image fails', async () => {
@@ -457,7 +554,7 @@ describe('entry previews on the search screen', () => {
     const card = await screen.findByRole('button', { name: 'Dune — view details' });
     await user.click(card);
     await user.click(screen.getByRole('button', { name: 'Close entry details' }));
-    expect((screen.getByLabelText('What are you looking for?') as HTMLInputElement).value).toBe('Dune');
+    expect((screen.getByLabelText('Search titles') as HTMLInputElement).value).toBe('Dune');
     expect((screen.getByLabelText('Release year') as HTMLInputElement).value).toBe('2021');
     expect(screen.getByRole('navigation', { name: 'Search result pages' }).textContent).toContain('Page 2 of 2');
     // The restored button can immediately be opened using the keyboard.

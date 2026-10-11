@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, ArrowUpRight, Check, ChevronDown,
-  Globe2, Search, SlidersHorizontal, X, Film, BookOpen, Gamepad2,
+  Globe2, Search, SlidersHorizontal, X,
 } from 'lucide-react';
 import type { CatalogItem, CatalogProviderInfo, CatalogSearchRequest, MediaType } from '@libra/shared/search';
 import { EntryPreview } from '../entries/EntryPreview';
@@ -25,6 +26,9 @@ interface Filters {
 const initialFilters: Filters = { mediaType: 'movie', year: '', language: 'en-US', includeAdult: false };
 
 export function SearchPage() {
+  const { state: routeState } = useLocation();
+  const queryRef = useRef<HTMLInputElement>(null);
+  const selectAfterPointer = useRef(false);
   const [providers, setProviders] = useState<CatalogProviderInfo[]>([]);
   const [providersLoading, setProvidersLoading] = useState(true);
   const [providerError, setProviderError] = useState('');
@@ -45,6 +49,12 @@ export function SearchPage() {
   const onConnected = useCallback((id: string) => {
     setProviders((current) => current.map((item) => item.id === id && !item.configured ? { ...item, configured: true } : item));
   }, []);
+
+  useEffect(() => {
+    if (!routeState?.focusSearch) return;
+    queryRef.current?.focus();
+    queryRef.current?.select();
+  }, [routeState?.focusSearch]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -110,14 +120,14 @@ export function SearchPage() {
   const activeFilters = Boolean((capabilities.year && filters.year) || (capabilities.language && filters.language !== 'en-US') || filters.includeAdult);
   const suggestions = providerId === 'igdb' ? ['Elden Ring', 'Hades', 'Stardew Valley']
     : providerId === 'openlibrary' ? ['Dune', 'The Hobbit', 'Pride and Prejudice']
-    : providerId === 'tenrai' ? ['Naruto', 'One Piece', 'Frieren'] : ['Dune', 'Interstellar', 'Spirited Away'];
-  const yearLabel = filters.mediaType === 'tv' ? 'First aired year' : filters.mediaType === 'book' ? 'First published year' : 'Release year';
+    : providerId === 'tenrai' ? ['Naruto', 'One Piece', 'Frieren']
+    : providerId === 'mangaupdates' ? ['Solo Leveling', 'Tower of God', 'The Beginning After the End'] : ['Dune', 'Interstellar', 'Spirited Away'];
+  const yearLabel = filters.mediaType === 'tv' ? 'First aired year' : ['book', 'manga', 'manhwa', 'manhua', 'webtoon'].includes(filters.mediaType) ? 'First published year' : 'Release year';
 
   return (
     <main id="main-content" className={styles.page}>
       <div className={styles.pageHeading}>
-        <div><div className={styles.eyebrow}>A WORLD OF STORIES. A SPACE OF YOUR OWN.</div><h1>Find your next<br /><span>obsession.</span></h1><p>Movies, books, games, and everything in between.<br />Discover something worth keeping.</p></div>
-        <div className={styles.heroIndex} aria-hidden="true"><div><Film size={30} strokeWidth={1.3} /><span>01 / WATCH</span></div><div><BookOpen size={30} strokeWidth={1.3} /><span>02 / READ</span></div><div><Gamepad2 size={30} strokeWidth={1.3} /><span>03 / PLAY</span></div></div>
+        <h1>Search</h1>
       </div>
 
       <div className={styles.workspace}>
@@ -148,9 +158,21 @@ export function SearchPage() {
 
         <section className={styles.searchArea} aria-label="Search external catalogs">
           <form onSubmit={submit} className={styles.searchForm}>
-            <label htmlFor="catalog-query" className={styles.searchLabel}>What are you looking for?</label>
+            <div className={styles.searchLabelRow}><label htmlFor="catalog-query" className={styles.searchLabel}>Search titles</label><kbd className={styles.shortcut} title="Focus search: Ctrl+K or Command+K">Ctrl / ⌘ K</kbd></div>
             <div className={styles.searchRow}>
-              <div className={styles.searchInputWrap}><Search size={20} aria-hidden="true" /><input id="catalog-query" type="search" placeholder="Search for a title…" value={query} onChange={(event) => setQuery(event.target.value)} maxLength={200} required autoComplete="off" /></div>
+              <div className={styles.searchInputWrap}><Search size={20} aria-hidden="true" /><input
+                ref={queryRef} id="catalog-query" type="search" placeholder="Search for a title…" value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onFocus={(event) => event.currentTarget.select()}
+                onPointerDown={(event) => { selectAfterPointer.current = event.pointerType === 'touch' || document.activeElement !== event.currentTarget; }}
+                onPointerCancel={() => { selectAfterPointer.current = false; }}
+                onClick={(event) => {
+                  // Pointer defaults can collapse the selection made during focus.
+                  if (selectAfterPointer.current) event.currentTarget.select();
+                  selectAfterPointer.current = false;
+                }}
+                aria-keyshortcuts="Control+k Meta+k /" maxLength={200} required autoComplete="off"
+              /></div>
               <button className={styles.searchButton} type="submit" disabled={!targets.length || !query.trim()}><Search size={17} /><span>Search</span></button>
             </div>
             <div className={styles.filtersTop}>
@@ -177,8 +199,7 @@ export function SearchPage() {
             <button type="button" onClick={() => setProviderReload((value) => value + 1)} aria-label="Refresh catalog connection"><ArrowRight size={17} /></button>
           </div>)}
           {providerId === 'all' && <p className={styles.sourceNote}>All types searches every selected catalog. A specific type searches only catalogs that support it. Filters shown apply to all active catalogs.</p>}
-          {!requests && <div className={styles.resultsHeader}><h2>Your next discovery</h2><span>A title is all it takes</span></div>}
-            {!requests && <div className={styles.discovery}><div><span className={styles.emptyEyebrow}>START WITH SOMETHING YOU LOVE</span><h3>Every great collection<br /> starts somewhere.</h3><p>Revisit a favorite or follow your curiosity.</p></div><div className={styles.suggestions}><span>A FEW PLACES TO START</span>{suggestions.map((title, index) => <button type="button" disabled={!targets.length} key={title} onClick={() => { setQuery(title); setRequests(makeRequests(title)); }}><span className={styles.suggestionNumber} aria-hidden="true">0{index + 1}</span>{title}<ArrowUpRight size={17} aria-hidden="true" /></button>)}</div></div>}
+          {!requests && <section className={styles.suggestions} aria-labelledby="suggestions-heading"><h2 id="suggestions-heading">Suggestions</h2>{suggestions.map((title) => <button type="button" disabled={!targets.length} key={title} onClick={() => { setQuery(title); setRequests(makeRequests(title)); }}>{title}<ArrowUpRight size={17} aria-hidden="true" /></button>)}</section>}
           {requests?.map((request, index) => <SearchResults
             key={request.provider + ':' + request.mediaType}
             request={request}

@@ -8,6 +8,8 @@ export const mediaPresentation = {
   book: { singular: 'Book', plural: 'Books', icon: BookOpen },
   manga: { singular: 'Manga', plural: 'Manga', icon: BookOpen },
   manhwa: { singular: 'Manhwa', plural: 'Manhwa', icon: BookOpen },
+  manhua: { singular: 'Manhua', plural: 'Manhua', icon: BookOpen },
+  webtoon: { singular: 'Webtoon', plural: 'Webtoons', icon: BookOpen },
   game: { singular: 'Game', plural: 'Games', icon: Gamepad2 },
   audiobook: { singular: 'Audiobook', plural: 'Audiobooks', icon: BookAudio },
   other: { singular: 'Title', plural: 'Other titles', icon: LibraryBig },

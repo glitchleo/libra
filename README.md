@@ -6,8 +6,9 @@ Using external APIs and publicly available catalogs, Libra will let you search f
 ## Current implementation
 
 The external search page connects to TMDB (movies and TV series), Tenrai
-(anime and manga), IGDB (games), and Open Library (books) through Express. Choose one catalog or **All providers** to
-search all four. **All types** searches every supported media type; a specific type
+(anime and manga), IGDB (games), Open Library (books), and MangaUpdates
+(manhwa, manhua, webtoons and manga) through Express. Choose one catalog or **All providers** to
+search all five. **All types** searches every supported media type; a specific type
 searches only compatible catalogs. Each source/type group has its own results,
 pagination, and retry control, so one provider's failure does not hide the others.
 
@@ -17,10 +18,16 @@ The provider selector is populated by the server so more adapters can be added.
 
 The Library stores entries in local SQLite during development, or Supabase PostgreSQL when deployed. See [the Vercel + Supabase deployment guide](docs/deployment.md) for setup, private access, and moving your existing library. Open a
 search result and choose **Add to library**. Set its status to Planned, In progress,
-Completed, On hold, or Dropped. Search results indicate titles already saved.
+Completed, On hold, or Dropped. The last status chosen for a new entry is reused
+during the visit; refreshing returns to the Settings default. Search results indicate titles already saved.
 The Library screen supports title/author/tag search, type/status/tag filters, sorting,
 pagination, small or large covers, a list with thumbnails, and the same entry details overlay. Removal is reversible by adding
 the title again; its saved metadata and status are retained.
+
+Search selects the existing query when focused. Use **Ctrl/Cmd+K** to open and
+focus search, or **/** when outside a text field. Entry tag selections update
+immediately and save in one batch five seconds after the first tap, even if the
+entry panel is closed. Failed saves offer a retry.
 
 Use **Add entry** to create a title missing from the catalogs. Choose any supported
 media type, enter a title and optional description, then add fields such as author
@@ -44,8 +51,13 @@ Book cards show authors and the first publication year, grouping editions under 
 
 ## Run locally
 
-**Tenrai and Open Library need no API key or account.** Select Tenrai for anime/manga
-or Open Library for books. TMDB and IGDB each use their own credentials below.
+**Tenrai, Open Library and MangaUpdates need no API key or account.** Select Tenrai
+for anime/manga, Open Library for books, or MangaUpdates for manhwa/manhua/webtoons.
+TMDB and IGDB each use their own credentials below.
+
+For an existing Vercel deployment, follow [the MangaUpdates update guide](docs/mangaupdates-update.md).
+Run the Supabase constraint migration before pushing the new code; local SQLite
+updates automatically on startup.
 
 Tenrai replaces Jikan as the anime/manga provider. For optional higher limits, put
 a Tenrai key in `TENRAI_SERVER_KEY` in `server/.env`; leave it blank for public access.

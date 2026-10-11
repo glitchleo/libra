@@ -2,7 +2,7 @@
 
 ## Credentials
 
-**Tenrai and Open Library require no credentials.** Anime, manga, and book
+**Tenrai, Open Library and MangaUpdates require no credentials.** Anime, manga, manhwa, manhua, webtoon and book
 search are available as soon as the server starts. Each catalog is configured independently;
 missing TMDB or IGDB credentials do not prevent those results from loading.
 
@@ -75,9 +75,35 @@ The documented allowance is 1 request/second without contact identification and
 performs user-triggered searches; bulk catalog imports would need the separate
 data dumps described in the [API guidance](https://openlibrary.org/developers/api).
 
+## MangaUpdates setup
+
+No key, account or environment variable is needed for public catalog search.
+Libra calls `POST https://api.mangaupdates.com/v1/series/search` from Express with
+`search`, `stype: "title"`, `page`, `perpage: 25`, and `orderby: "score"`.
+Manga, manhwa and manhua use the API's `type` filter; Webtoons uses the `Webtoon/Webcomic`
+category, because webtoon is a format rather than an origin type. A manhwa found
+under Webtoons is still stored as manhwa, so adding it from either filter finds
+the same saved entry. Native numeric `series_id` values are stored as strings.
+
+Year uses the API's exact `year` filter. Adult content is excluded by default with
+`exclude_genre: ["Adult", "Hentai", "Smut"]`; enabling it removes that exclusion.
+The adapter normalizes descriptions, publication years, CDN covers, Bayesian
+ratings and rating vote counts. Missing images/years/ratings stay absent.
+Pagination uses the returned `per_page`, because MangaUpdates can clamp `perpage`.
+
+Search calls are serialized with a one-second minimum spacing, bounded to eight
+outstanding requests, and use a ten-second upstream timeout. Identical in-flight
+searches share a request; successful pages are cached for five minutes (up to 100
+pages per server instance). Rate limits honor `Retry-After`; errors stay retryable.
+Multiple Vercel instances cannot share this in-memory cache/limiter.
+
+Existing Supabase deployments need the
+[media-type constraint upgrade](mangaupdates-update.md) before adding new types.
+Local SQLite applies its migration on startup.
+
 ## Search behavior
 
-- Select TMDB, Tenrai, IGDB, Open Library, or **All providers** (all four catalogs).
+- Select TMDB, Tenrai, IGDB, Open Library, MangaUpdates, or **All providers** (all five catalogs).
 - **All types** searches each supported media type for the selected providers.
   Selecting a specific media type contacts only providers that support that type.
   Results stay grouped by provider and type, preserving each source's ordering,
@@ -152,7 +178,7 @@ filter capabilities, website URLs, and configuration status.
 
 | Parameter | Meaning |
 | --- | --- |
-| `provider` | Registered provider ID: `tmdb`, `tenrai`, `igdb`, or `openlibrary` |
+| `provider` | Registered provider ID: `tmdb`, `tenrai`, `igdb`, `openlibrary`, or `mangaupdates` |
 | `query` | Nonempty title, at most 200 characters |
 | `mediaType` | A media type supported by the selected provider |
 | `page` | Integer 1–500; defaults to 1 |
@@ -167,6 +193,8 @@ Tenrai example: `/api/search?provider=tenrai&query=Naruto&mediaType=anime&page=1
 IGDB example: `/api/search?provider=igdb&query=Elden%20Ring&mediaType=game&page=1&year=2022`.
 
 Open Library example: `/api/search?provider=openlibrary&query=Dune&mediaType=book&page=1&year=1965`.
+
+MangaUpdates example: `/api/search?provider=mangaupdates&query=Solo%20Leveling&mediaType=manhwa&page=1`.
 
 The browser coordinates combined searches by making one request per supported
 provider/type pair. The API contract remains one provider/type per request;
@@ -219,7 +247,7 @@ use the normalized `CatalogSearchResponse` contract in `shared/src/types/search.
 4. Implement `search()` with upstream input mapping, timeouts, response validation,
    and normalization. Keep source IDs as strings, absent values as `null`, and
    ratings on a 0–10 scale. Use `HttpError` for safe, actionable errors.
-5. Register the adapter in `createProviderRegistry([...])` in `server/src/index.ts`.
+5. Register the adapter in `createProviderRegistry([...])` in `server/src/runtime.ts`.
    The frontend automatically adds it to the selector and renders its supported
    media types and filters.
 6. Add tests using mocked upstream responses. If a provider needs a new filter
@@ -232,16 +260,19 @@ only and do not appear in the running application.
 ## Validation and current limits
 
 `npm test` runs adapter/API integration tests and React interaction tests using
-mocked TMDB, Tenrai, IGDB, and Open Library responses. It covers credential precedence and privacy,
+mocked TMDB, Tenrai, IGDB, Open Library, and MangaUpdates responses. It covers credential precedence and privacy,
 metadata mapping, input validation, upstream errors, caching, request pacing,
 independent pagination and retries, combined-provider searches, aborted requests,
 empty results, navigation, and missing images. These automated tests make no
-external requests. Real TMDB and IGDB searches require credentials; Tenrai and Open Library do not.
+external requests. Real TMDB and IGDB searches require credentials; Tenrai, Open Library and MangaUpdates do not.
 
-This implementation runs locally with a persistent SQLite library and catalog
-imports. It has no user accounts or public deployment yet.
+This implementation runs locally with SQLite and on Vercel with Supabase PostgreSQL.
+The deployed personal library is protected by a password. See [deployment](deployment.md).
 
 ## Official references
+
+- [MangaUpdates API documentation and acceptable-use policy](https://api.mangaupdates.com/)
+- [MangaUpdates OpenAPI schema](https://api.mangaupdates.com/openapi.yaml)
 
 - [Open Library API guidance and identification](https://openlibrary.org/developers/api)
 - [Open Library Search API](https://openlibrary.org/dev/docs/api/search)
